@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Image,
   TextInput,
+  Alert,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -59,12 +60,22 @@ export default function WelcomeScreen() {
       </TouchableOpacity>
 
       <View style={styles.socialContainer}>
-        <TouchableOpacity style={styles.socialButton}>
+        <TouchableOpacity
+          style={styles.socialButton}
+          onPress={() => {
+            Alert.alert("Coming soon");
+          }}
+        >
           <Ionicons name="logo-google" size={24} color="#34a853" />
           <Text style={styles.socialButtonText}>Continue with Google</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.socialButton}>
+        <TouchableOpacity
+          style={styles.socialButton}
+          onPress={() => {
+            Alert.alert("Coming soon");
+          }}
+        >
           <Ionicons name="logo-apple" size={24} color="#000" />
           <Text style={styles.socialButtonText}>Continue with Apple</Text>
         </TouchableOpacity>
