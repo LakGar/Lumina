@@ -1,0 +1,355 @@
+{
+  "project_status": {
+    "phase": "4",
+    "current_phase": "Search and AI Chat Interface",
+    "overall_progress": 75
+  },
+  "infrastructure": {
+    "docker_setup": {
+      "status": "completed",
+      "description": "Docker and docker-compose for PostgreSQL, Redis, Next.js"
+    },
+    "prisma_setup": {
+      "status": "completed",
+      "description": "Prisma with PostgreSQL connection"
+    },
+    "redis_bullmq": {
+      "status": "completed",
+      "description": "Redis and BullMQ setup"
+    },
+    "pinecone": {
+      "status": "completed",
+      "description": "Pinecone SDK integration"
+    },
+    "aws_s3": {
+      "status": "completed",
+      "description": "AWS SDK with S3 signed upload utility"
+    }
+  },
+  "api_routes": {
+    "auth": {
+      "nextauth_setup": {
+        "status": "completed",
+        "description": "Google OAuth via NextAuth"
+      },
+      "session_middleware": {
+        "status": "completed",
+        "description": "Secure session-check middleware"
+      },
+      "GET_api_auth_session": {
+        "status": "completed",
+        "description": "Get current user session with profile"
+      }
+    },
+    "profile": {
+      "GET_api_profile": {
+        "status": "completed",
+        "description": "Get user profile"
+      },
+      "PUT_api_profile": {
+        "status": "completed",
+        "description": "Update user profile"
+      }
+    },
+    "journal_entries": {
+      "GET_api_journal": {
+        "status": "completed",
+        "description": "List journal entries with pagination"
+      },
+      "POST_api_journal": {
+        "status": "completed",
+        "description": "Create journal entry and trigger ETL"
+      },
+      "GET_api_journal_id": {
+        "status": "completed",
+        "description": "Get specific journal entry"
+      },
+      "PUT_api_journal_id": {
+        "status": "completed",
+        "description": "Update journal entry"
+      },
+      "DELETE_api_journal_id": {
+        "status": "completed",
+        "description": "Delete journal entry"
+      }
+    },
+    "voice_upload": {
+      "GET_api_voice_upload_url": {
+        "status": "completed",
+        "description": "Generate S3 signed URL for MP3 upload"
+      }
+    },
+    "search": {
+      "GET_api_search": {
+        "status": "completed",
+        "description": "Keyword and semantic search with tier-based access"
+      }
+    },
+    "ai_chat": {
+      "POST_api_chat": {
+        "status": "completed",
+        "description": "AI chat with streaming responses and context retrieval"
+      }
+    },
+    "insights": {
+      "GET_api_insights": {
+        "status": "completed",
+        "description": "Mood trends, tag analytics, and entry frequency"
+      }
+    },
+    "export": {
+      "GET_api_export": {
+        "status": "completed",
+        "description": "Multi-format export with membership restrictions"
+      }
+    },
+    "settings": {
+      "GET_api_settings": {
+        "status": "pending",
+        "description": "Get user settings"
+      },
+      "PUT_api_settings": {
+        "status": "pending",
+        "description": "Update user settings"
+      }
+    },
+    "subscriptions": {
+      "GET_api_subscriptions": {
+        "status": "pending",
+        "description": "Get subscription info"
+      },
+      "POST_api_subscriptions": {
+        "status": "pending",
+        "description": "Create subscription"
+      }
+    },
+    "health": {
+      "GET_api_health": {
+        "status": "completed",
+        "description": "Health check endpoint"
+      }
+    }
+  },
+  "prisma_models": {
+    "profiles": {
+      "status": "completed",
+      "description": "User profiles table"
+    },
+    "journal_entries": {
+      "status": "completed",
+      "description": "Journal entries table"
+    },
+    "settings": {
+      "status": "completed",
+      "description": "User settings table"
+    },
+    "subscriptions": {
+      "status": "completed",
+      "description": "Subscription/billing table"
+    },
+    "users": {
+      "status": "completed",
+      "description": "NextAuth users table"
+    },
+    "accounts": {
+      "status": "completed",
+      "description": "NextAuth accounts table"
+    },
+    "sessions": {
+      "status": "completed",
+      "description": "NextAuth sessions table"
+    }
+  },
+  "unit_tests": {
+    "auth_tests": {
+      "status": "completed",
+      "description": "Authentication tests"
+    },
+    "profile_tests": {
+      "status": "completed",
+      "description": "Profile API tests"
+    },
+    "journal_tests": {
+      "status": "completed",
+      "description": "Journal entries API tests"
+    },
+    "search_tests": {
+      "status": "completed",
+      "description": "Search functionality tests"
+    },
+    "chat_tests": {
+      "status": "completed",
+      "description": "AI chat functionality tests"
+    },
+    "insights_tests": {
+      "status": "completed",
+      "description": "Analytics and insights tests"
+    },
+    "export_tests": {
+      "status": "completed",
+      "description": "Export functionality tests"
+    },
+    "utility_tests": {
+      "status": "pending",
+      "description": "Utility function tests"
+    },
+    "health_tests": {
+      "status": "completed",
+      "description": "Health check tests"
+    }
+  },
+  "documentation": {
+    "api_reference": {
+      "status": "completed",
+      "description": "API documentation"
+    },
+    "setup_guide": {
+      "status": "completed",
+      "description": "Development setup guide"
+    }
+  },
+  "features": {
+    "etl_pipeline": {
+      "status": "completed",
+      "description": "AI ETL pipeline for journal processing"
+    },
+    "voice_transcription": {
+      "status": "completed",
+      "description": "Whisper API integration"
+    },
+    "ai_summaries": {
+      "status": "completed",
+      "description": "GPT-4 summary generation"
+    },
+    "mood_analysis": {
+      "status": "completed",
+      "description": "AI mood classification"
+    },
+    "tag_extraction": {
+      "status": "completed",
+      "description": "AI tag generation"
+    },
+    "vector_embeddings": {
+      "status": "completed",
+      "description": "Pinecone vector storage"
+    },
+    "settings_respect": {
+      "status": "completed",
+      "description": "User settings-aware processing"
+    },
+    "semantic_search": {
+      "status": "completed",
+      "description": "Pinecone-based semantic search for Pro+ users"
+    },
+    "keyword_search": {
+      "status": "completed",
+      "description": "PostgreSQL full-text search for free users"
+    },
+    "ai_chat": {
+      "status": "completed",
+      "description": "Contextual AI chat with streaming responses"
+    },
+    "analytics": {
+      "status": "completed",
+      "description": "Mood trends, tag frequency, and writing analytics"
+    },
+    "data_export": {
+      "status": "completed",
+      "description": "Multi-format export with membership restrictions"
+    }
+  },
+  "ai_processing": {
+    "openai_integration": {
+      "status": "completed",
+      "description": "OpenAI API integration"
+    },
+    "whisper_transcription": {
+      "status": "completed",
+      "description": "Audio transcription"
+    },
+    "gpt4_analysis": {
+      "status": "completed",
+      "description": "Content analysis and insights"
+    },
+    "embedding_generation": {
+      "status": "completed",
+      "description": "Text embedding generation"
+    },
+    "pinecone_storage": {
+      "status": "completed",
+      "description": "Vector storage in Pinecone"
+    },
+    "semantic_search": {
+      "status": "completed",
+      "description": "Vector-based semantic search"
+    },
+    "context_retrieval": {
+      "status": "completed",
+      "description": "AI chat context retrieval from embeddings"
+    }
+  },
+  "background_jobs": {
+    "bullmq_setup": {
+      "status": "completed",
+      "description": "BullMQ queue setup"
+    },
+    "etl_worker": {
+      "status": "completed",
+      "description": "ETL job processor"
+    },
+    "job_retry": {
+      "status": "completed",
+      "description": "Job retry and error handling"
+    }
+  },
+  "security": {
+    "authentication": {
+      "status": "completed",
+      "description": "Session-based authentication"
+    },
+    "authorization": {
+      "status": "completed",
+      "description": "User-specific data access"
+    },
+    "input_validation": {
+      "status": "completed",
+      "description": "Zod schema validation"
+    },
+    "s3_security": {
+      "status": "completed",
+      "description": "Signed URL generation"
+    },
+    "membership_control": {
+      "status": "completed",
+      "description": "Tier-based feature access control"
+    }
+  },
+  "user_experience": {
+    "streaming_responses": {
+      "status": "completed",
+      "description": "Real-time AI chat streaming"
+    },
+    "pagination": {
+      "status": "completed",
+      "description": "Efficient data pagination"
+    },
+    "filtering": {
+      "status": "completed",
+      "description": "Advanced search and export filtering"
+    },
+    "analytics_visualization": {
+      "status": "completed",
+      "description": "Data structures for frontend charts"
+    }
+  },
+  "plan_refactor": true,
+  "plan_enforcement_complete": true,
+  "settings_enforcement_complete": true,
+  "checkFeatureAccess_integrated_everywhere": true,
+  "all_plan_logic_moved_to_subscription_model": true,
+  "settings_loaded_via_loadUserSettings": true,
+  "plan_typed_membership_tier_union": true,
+  "ai_endpoints_respect_settings_and_plan": true,
+  "etl_worker_respects_user_flags": true,
+  "export_and_search_tier_restrictions_enforced": true
+}
