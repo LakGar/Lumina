@@ -115,8 +115,8 @@
     },
     "subscriptions": {
       "GET_api_subscriptions": {
-        "status": "pending",
-        "description": "Get subscription info"
+        "status": "completed",
+        "description": "Returns current user subscription info from DB."
       },
       "POST_api_subscriptions": {
         "status": "pending",
@@ -190,8 +190,8 @@
       "description": "Export functionality tests"
     },
     "utility_tests": {
-      "status": "pending",
-      "description": "Utility function tests"
+      "status": "completed",
+      "description": "Comprehensive tests for all utility functions including auth, rate-limit, access, settings, and validation schemas"
     },
     "health_tests": {
       "status": "completed",

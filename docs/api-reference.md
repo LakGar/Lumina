@@ -493,3 +493,32 @@ npm test
 ```
 
 The test suite includes Pinecone namespace management tests in `__tests__/pinecone.test.ts`.
+
+## GET /api/subscriptions
+
+Returns the current user's subscription info from the database. Useful for displaying plan status (e.g., "Pro plan, active until July 2025").
+
+- **Method:** GET
+- **URL:** `/api/subscriptions`
+- **Auth:** Required (user must be logged in)
+
+### Response
+
+- If the user has a subscription:
+
+```json
+{
+  "plan": "pro",
+  "status": "active",
+  "currentPeriodEnd": "2025-07-01T00:00:00.000Z"
+}
+```
+
+- If the user does not have a subscription:
+
+```json
+{
+  "plan": "free",
+  "active": false
+}
+```
