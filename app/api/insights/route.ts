@@ -6,8 +6,8 @@ import { prisma } from "@/lib/prisma";
 
 // Validation schema for insights parameters
 const insightsSchema = z.object({
-  startDate: z.string().datetime().optional(),
-  endDate: z.string().datetime().optional(),
+  startDate: z.string().datetime().nullable().optional(),
+  endDate: z.string().datetime().nullable().optional(),
   groupBy: z.enum(["day", "week", "month"]).default("day"),
 });
 

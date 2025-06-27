@@ -18,6 +18,8 @@ import {
   Trash2,
   Calendar,
   Tag,
+  Save,
+  X,
 } from "lucide-react";
 import { useJournal } from "@/hooks/useJournal";
 import { format } from "date-fns";
@@ -27,6 +29,9 @@ export default function JournalPage() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newEntryContent, setNewEntryContent] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState("");
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const {
     entries,
@@ -34,6 +39,7 @@ export default function JournalPage() {
     error,
     total,
     createEntry,
+    updateEntry,
     deleteEntry,
     setFilters,
   } = useJournal({ limit: 20 });
@@ -56,6 +62,31 @@ export default function JournalPage() {
     } finally {
       setIsCreating(false);
     }
+  };
+
+  const handleEditEntry = (entry: any) => {
+    setEditingEntry(entry.id);
+    setEditContent(entry.content);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingEntry || !editContent.trim()) return;
+
+    setIsUpdating(true);
+    try {
+      await updateEntry(editingEntry, { content: editContent });
+      setEditingEntry(null);
+      setEditContent("");
+    } catch (error) {
+      console.error("Failed to update entry:", error);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingEntry(null);
+    setEditContent("");
   };
 
   const handleDeleteEntry = async (id: string) => {
@@ -235,30 +266,75 @@ export default function JournalPage() {
                         )}
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            // TODO: Implement edit functionality
-                            console.log("Edit entry:", entry.id);
-                          }}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteEntry(entry.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {editingEntry === entry.id ? (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={handleSaveEdit}
+                              disabled={isUpdating || !editContent.trim()}
+                            >
+                              <Save className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={handleCancelEdit}
+                              disabled={isUpdating}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditEntry(entry)}
+                              disabled={editingEntry !== null}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteEntry(entry.id)}
+                              disabled={editingEntry !== null}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="prose prose-sm max-w-none">
-                      <p className="whitespace-pre-wrap">{entry.content}</p>
-                    </div>
+                    {editingEntry === entry.id ? (
+                      <>
+                        <textarea
+                          placeholder="Edit your entry..."
+                          value={editContent}
+                          onChange={(e) => setEditContent(e.target.value)}
+                          rows={6}
+                          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        />
+                        <div className="flex justify-end space-x-2 mt-4">
+                          <Button variant="outline" onClick={handleCancelEdit}>
+                            Cancel
+                          </Button>
+                          <Button
+                            onClick={handleSaveEdit}
+                            disabled={isUpdating || !editContent.trim()}
+                          >
+                            {isUpdating ? "Saving..." : "Save Changes"}
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="prose prose-sm max-w-none">
+                        <p className="whitespace-pre-wrap">{entry.content}</p>
+                      </div>
+                    )}
                     {entry.summary && (
                       <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                         <p className="text-sm font-medium text-blue-900 mb-1">

@@ -7,7 +7,10 @@ const globalForRedis = globalThis as unknown as {
 function getRedis() {
   if (!globalForRedis.redis) {
     globalForRedis.redis = new Redis(
-      process.env.REDIS_URL || "redis://localhost:6379"
+      process.env.REDIS_URL || "redis://localhost:6379",
+      {
+        maxRetriesPerRequest: null, // Required for BullMQ compatibility
+      }
     );
   }
   return globalForRedis.redis;
