@@ -1,27 +1,7 @@
-import { getServerSession } from "next-auth/next";
+import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaAdapter } from "@auth/prisma-adapter";
-import GoogleProvider from "next-auth/providers/google";
 import { prisma } from "@/lib/prisma";
-
-// Import authOptions from the auth config
-export const authOptions = {
-  adapter: PrismaAdapter(prisma),
-  providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
-  ],
-  callbacks: {
-    async session({ session, user }: { session: any; user: any }) {
-      if (session?.user) {
-        session.user.id = user.id;
-      }
-      return session;
-    },
-  },
-};
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 export async function getCurrentUser() {
   const session = await getServerSession(authOptions);
@@ -53,7 +33,7 @@ export async function requireAuthWithProfile(request: NextRequest) {
 
   // Get user profile
   const profile = await prisma.profile.findUnique({
-    where: { userId: session.user.id },
+    where: { userId: (session.user as any).id },
     // Note: plan and settings must be fetched separately via Subscription and Settings models
   });
 

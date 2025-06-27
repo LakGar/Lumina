@@ -17,7 +17,7 @@ const updateJournalEntrySchema = z.object({
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authResult = await requireAuthWithProfile(request);
@@ -27,7 +27,7 @@ export async function GET(
     }
 
     const { user } = authResult;
-    const { id } = params;
+    const { id } = await params;
 
     // Get journal entry
     const journalEntry = await prisma.journalEntry.findFirst({
@@ -59,7 +59,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authResult = await requireAuthWithProfile(request);
@@ -69,7 +69,7 @@ export async function PUT(
     }
 
     const { user } = authResult;
-    const { id } = params;
+    const { id } = await params;
 
     // Check if journal entry exists and belongs to user
     const existingEntry = await prisma.journalEntry.findFirst({
@@ -125,7 +125,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authResult = await requireAuthWithProfile(request);
@@ -135,7 +135,7 @@ export async function DELETE(
     }
 
     const { user } = authResult;
-    const { id } = params;
+    const { id } = await params;
 
     // Check if journal entry exists and belongs to user
     const existingEntry = await prisma.journalEntry.findFirst({

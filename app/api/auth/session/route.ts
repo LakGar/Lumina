@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   try {
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
 
     if (!session?.user) {
       return NextResponse.json(
@@ -16,7 +17,6 @@ export async function GET() {
     // Get user profile with settings and subscription
     const profile = await prisma.profile.findUnique({
       where: { userId: (session.user as any).id },
-      // Note: settings must be fetched separately via loadUserSettings
     });
 
     if (!profile) {
@@ -26,11 +26,23 @@ export async function GET() {
       );
     }
 
+    // Get settings and subscription separately
+    const [settings, subscription] = await Promise.all([
+      prisma.settings.findUnique({
+        where: { userId: (session.user as any).id },
+      }),
+      prisma.subscription.findUnique({
+        where: { userId: (session.user as any).id },
+      }),
+    ]);
+
     return NextResponse.json({
       success: true,
       data: {
         user: session.user,
         profile,
+        settings,
+        subscription,
       },
     });
   } catch (error) {

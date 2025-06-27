@@ -3,7 +3,6 @@ import { requireAuthWithProfile } from "@/utils/auth";
 import { validateRequest } from "@/utils/validation";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { etlQueue } from "@/lib/queue";
 
 // Validation schemas
 const createJournalEntrySchema = z.object({
@@ -12,6 +11,20 @@ const createJournalEntrySchema = z.object({
   mood: z.string().optional(),
   voiceUrl: z.string().url().optional(),
 });
+
+// Function to get ETL queue safely
+async function getETLQueue() {
+  try {
+    const { etlQueue } = await import("@/lib/queue");
+    return etlQueue;
+  } catch (error) {
+    console.warn(
+      "ETL queue not available (Redis may not be configured):",
+      error
+    );
+    return null;
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -66,19 +79,12 @@ export async function GET(request: NextRequest) {
 
     const totalPages = Math.ceil(total / limit);
 
+    // Return format expected by frontend API client
     return NextResponse.json({
-      success: true,
-      data: {
-        entries,
-        pagination: {
-          page,
-          limit,
-          total,
-          totalPages,
-          hasNext: page < totalPages,
-          hasPrev: page > 1,
-        },
-      },
+      entries,
+      total,
+      page,
+      totalPages,
     });
   } catch (error) {
     console.error("GET /api/journal error:", error);
@@ -113,13 +119,24 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Enqueue ETL job for AI processing
-    await etlQueue.add("journal-etl", {
-      entryId: journalEntry.id,
-      userId: user.id,
-      content: validatedData.content,
-      voiceUrl: validatedData.voiceUrl,
-    });
+    // Try to enqueue ETL job for AI processing (optional - won't fail if Redis is not available)
+    const etlQueue = await getETLQueue();
+    if (etlQueue) {
+      try {
+        await etlQueue.add("journal-etl", {
+          entryId: journalEntry.id,
+          userId: user.id,
+          content: validatedData.content,
+          voiceUrl: validatedData.voiceUrl,
+        });
+        console.log("ETL job enqueued successfully");
+      } catch (queueError) {
+        console.warn("Failed to enqueue ETL job:", queueError);
+        // Continue without failing the request
+      }
+    } else {
+      console.log("ETL queue not available, skipping AI processing");
+    }
 
     return NextResponse.json(
       {

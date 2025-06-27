@@ -95,7 +95,7 @@ function getClientIP(request: NextRequest): string {
   }
 
   // Fallback to connection remote address
-  return request.ip || "unknown";
+  return (request as any).ip || "unknown";
 }
 
 // Clean up expired rate limit entries (run periodically)

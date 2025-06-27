@@ -72,7 +72,7 @@ describe("rateLimit", () => {
 
   it("should handle requests without IP", () => {
     const request = createMockRequest();
-    request.ip = undefined;
+    (request as any).ip = undefined;
 
     // Should still work (uses default IP)
     const result = rateLimit(request);

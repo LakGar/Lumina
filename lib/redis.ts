@@ -13,12 +13,7 @@ function getRedis() {
   return globalForRedis.redis;
 }
 
-// Export a getter that initializes the client only when accessed
-export const redis = new Proxy({} as Redis, {
-  get(target, prop) {
-    const client = getRedis();
-    return (client as any)[prop];
-  },
-});
+// Export the Redis client directly
+export const redis = getRedis();
 
 export default redis;

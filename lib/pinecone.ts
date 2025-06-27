@@ -8,19 +8,13 @@ function getPinecone() {
   if (!globalForPinecone.pinecone) {
     globalForPinecone.pinecone = new Pinecone({
       apiKey: process.env.PINECONE_API_KEY!,
-      environment: process.env.PINECONE_ENVIRONMENT!,
     });
   }
   return globalForPinecone.pinecone;
 }
 
-// Export a getter that initializes the client only when accessed
-export const pinecone = new Proxy({} as Pinecone, {
-  get(target, prop) {
-    const client = getPinecone();
-    return (client as any)[prop];
-  },
-});
+// Export the Pinecone client directly
+export const pinecone = getPinecone();
 
 export const getPineconeIndex = () => {
   const client = getPinecone();
@@ -42,7 +36,7 @@ export const initializeUserNamespace = async (
 
     // Create a test vector to initialize the namespace
     // This ensures the namespace exists and is ready for use
-    const testVector = new Array(1532).fill(0); // Pinecone index dimension
+    const testVector = new Array(1536).fill(0); // Updated to match your Pinecone index dimension
 
     await index.upsert([
       {
