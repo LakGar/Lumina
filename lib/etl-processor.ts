@@ -1,11 +1,11 @@
 import { Worker } from "bullmq";
 import { redis } from "./redis";
-import { prisma } from "@/lib/prisma";
-import { openai } from "@/lib/openai";
-import { getPineconeIndex, getUserNamespace } from "@/lib/pinecone";
+import { prisma } from "./prisma";
+import { openai } from "./openai";
+import { getPineconeIndex, getUserNamespace } from "./pinecone";
 import { ETLJobData } from "./queue";
-import { checkFeatureAccess } from "@/utils/access";
-import type { MembershipTier } from "@/types";
+import { checkFeatureAccess } from "../utils/access";
+import type { MembershipTier } from "../types";
 
 // OpenAI prompt templates
 const SUMMARY_PROMPT = `Please provide a concise summary (2-3 sentences) of the following journal entry, focusing on the main themes and emotions expressed:
@@ -147,11 +147,11 @@ async function storeEmbeddings(
         chunkIndex: i,
         text: chunk,
         type: "journal_chunk",
-        namespace,
       },
     }));
 
-    await index.upsert(vectors);
+    // Upsert into the user's namespace
+    await index.namespace(namespace).upsert(vectors);
     console.log(
       `[ETL] [LOAD] Embeddings stored successfully in namespace: ${namespace}`
     );
@@ -165,6 +165,8 @@ async function storeEmbeddings(
 export async function processJournalEntry(jobData: ETLJobData): Promise<void> {
   const { entryId, userId, content: originalContent, voiceUrl } = jobData;
   const startTime = Date.now();
+  const maxRetries = 3;
+  let retryCount = 0;
 
   console.log(`[ETL] Starting job processing for entry ${entryId}`);
   console.log(
@@ -176,201 +178,224 @@ export async function processJournalEntry(jobData: ETLJobData): Promise<void> {
     })}`
   );
 
-  try {
-    // Get user settings to determine what to process
-    console.log(`[ETL] [EXTRACT] Fetching user settings for user ${userId}...`);
-    const userSettings = await prisma.settings.findUnique({
-      where: { userId },
-    });
-
-    if (!userSettings) {
-      throw new Error("User settings not found");
-    }
-
-    // Fetch plan from Subscription
-    console.log(
-      `[ETL] [EXTRACT] Fetching subscription plan for user ${userId}...`
-    );
-    const subscription = await prisma.subscription.findUnique({
-      where: { userId },
-    });
-    const plan = (subscription?.plan ?? "free") as MembershipTier;
-    const user = {
-      plan,
-      settings: {
-        ai_memory_enabled: userSettings.aiMemoryEnabled,
-        mood_analysis_enabled: userSettings.moodAnalysisEnabled,
-        summary_generation_enabled: userSettings.summaryGenerationEnabled,
-      },
-    };
-
-    console.log(
-      `[ETL] [EXTRACT] User plan: ${plan}, AI Memory: ${userSettings.aiMemoryEnabled}, Mood Analysis: ${userSettings.moodAnalysisEnabled}, Summary: ${userSettings.summaryGenerationEnabled}`
-    );
-
-    let finalContent = originalContent;
-    console.log(
-      `[ETL] [EXTRACT] Original content length: ${originalContent.length} characters`
-    );
-
-    // Step 1: Transcribe voice if provided
-    if (voiceUrl && userSettings.aiMemoryEnabled) {
+  while (retryCount < maxRetries) {
+    try {
+      // Get user settings to determine what to process
       console.log(
-        `[ETL] [TRANSFORM] Voice transcription enabled, processing voice file...`
+        `[ETL] [EXTRACT] Fetching user settings for user ${userId}...`
       );
-      try {
-        const transcription = await transcribeAudio(voiceUrl);
-        finalContent = transcription;
+      const userSettings = await prisma.settings.findUnique({
+        where: { userId },
+      });
+
+      if (!userSettings) {
+        throw new Error("User settings not found");
+      }
+
+      // Fetch plan from Subscription
+      console.log(
+        `[ETL] [EXTRACT] Fetching subscription plan for user ${userId}...`
+      );
+      const subscription = await prisma.subscription.findUnique({
+        where: { userId },
+      });
+      const plan = (subscription?.plan ?? "free") as MembershipTier;
+      const user = {
+        plan,
+        settings: {
+          ai_memory_enabled: userSettings.aiMemoryEnabled,
+          mood_analysis_enabled: userSettings.moodAnalysisEnabled,
+          summary_generation_enabled: userSettings.summaryGenerationEnabled,
+        },
+      };
+
+      console.log(
+        `[ETL] [EXTRACT] User plan: ${plan}, AI Memory: ${userSettings.aiMemoryEnabled}, Mood Analysis: ${userSettings.moodAnalysisEnabled}, Summary: ${userSettings.summaryGenerationEnabled}`
+      );
+
+      let finalContent = originalContent;
+      console.log(
+        `[ETL] [EXTRACT] Original content length: ${originalContent.length} characters`
+      );
+
+      // Step 1: Transcribe voice if provided
+      if (voiceUrl && userSettings.aiMemoryEnabled) {
         console.log(
-          `[ETL] [TRANSFORM] Voice transcription completed, new content length: ${finalContent.length} characters`
+          `[ETL] [TRANSFORM] Voice transcription enabled, processing voice file...`
         );
-      } catch (error) {
-        console.error("[ETL] [TRANSFORM] Voice transcription failed:", error);
-        // Continue with original content if transcription fails
-      }
-    } else {
-      console.log(
-        `[ETL] [TRANSFORM] Voice transcription skipped (voiceUrl: ${!!voiceUrl}, aiMemoryEnabled: ${
-          userSettings.aiMemoryEnabled
-        })`
-      );
-    }
-
-    // Step 2: Generate AI insights (if enabled)
-    let summary: string | null = null;
-    let tags: string[] = [];
-    let mood: string | null = null;
-
-    if (
-      checkFeatureAccess(user, "summary_generation", { throwIfDenied: false })
-    ) {
-      console.log(`[ETL] [TRANSFORM] Generating AI summary...`);
-      try {
-        const summaryResponse = await openai.chat.completions.create({
-          model: "gpt-4",
-          messages: [
-            {
-              role: "user",
-              content: SUMMARY_PROMPT.replace("{content}", finalContent),
-            },
-          ],
-          max_tokens: 150,
-          temperature: 0.7,
-        });
-        summary = summaryResponse.choices[0]?.message?.content?.trim() || null;
-        console.log(`[ETL] [TRANSFORM] Summary generated: ${summary}`);
-      } catch (error) {
-        console.error("[ETL] [TRANSFORM] Summary generation failed:", error);
-      }
-    } else {
-      console.log(
-        `[ETL] [TRANSFORM] Summary generation skipped (not enabled for ${plan} tier)`
-      );
-    }
-
-    if (checkFeatureAccess(user, "mood_analysis", { throwIfDenied: false })) {
-      console.log(`[ETL] [TRANSFORM] Analyzing mood and sentiment...`);
-      try {
-        const moodResponse = await openai.chat.completions.create({
-          model: "gpt-4",
-          messages: [
-            {
-              role: "user",
-              content: MOOD_PROMPT.replace("{content}", finalContent),
-            },
-          ],
-          max_tokens: 20,
-          temperature: 0.3,
-        });
-        mood = moodResponse.choices[0]?.message?.content?.trim() || null;
-        console.log(`[ETL] [TRANSFORM] Mood detected: ${mood}`);
-      } catch (error) {
-        console.error("[ETL] [TRANSFORM] Mood analysis failed:", error);
-      }
-    } else {
-      console.log(
-        `[ETL] [TRANSFORM] Mood analysis skipped (not enabled for ${plan} tier)`
-      );
-    }
-
-    // Generate tags if enabled
-    if (
-      checkFeatureAccess(user, "summary_generation", { throwIfDenied: false })
-    ) {
-      console.log(`[ETL] [TRANSFORM] Extracting auto-tags...`);
-      try {
-        const tagsResponse = await openai.chat.completions.create({
-          model: "gpt-4",
-          messages: [
-            {
-              role: "user",
-              content: TAGS_PROMPT.replace("{content}", finalContent),
-            },
-          ],
-          max_tokens: 100,
-          temperature: 0.5,
-        });
-        const tagsText = tagsResponse.choices[0]?.message?.content?.trim();
-        if (tagsText) {
-          tags = tagsText
-            .split(",")
-            .map((tag) => tag.trim())
-            .filter((tag) => tag.length > 0);
+        try {
+          const transcription = await transcribeAudio(voiceUrl);
+          finalContent = transcription;
+          console.log(
+            `[ETL] [TRANSFORM] Voice transcription completed, new content length: ${finalContent.length} characters`
+          );
+        } catch (error) {
+          console.error("[ETL] [TRANSFORM] Voice transcription failed:", error);
+          // Continue with original content if transcription fails
         }
-        console.log(`[ETL] [TRANSFORM] Auto-tags: ${tags.join(", ")}`);
-      } catch (error) {
-        console.error("[ETL] [TRANSFORM] Tag generation failed:", error);
+      } else {
+        console.log(
+          `[ETL] [TRANSFORM] Voice transcription skipped (voiceUrl: ${!!voiceUrl}, aiMemoryEnabled: ${
+            userSettings.aiMemoryEnabled
+          })`
+        );
       }
-    } else {
-      console.log(
-        `[ETL] [TRANSFORM] Tag generation skipped (not enabled for ${plan} tier)`
-      );
-    }
 
-    // Step 3: Generate chunks and embeddings (if memory is enabled)
-    let chunks: string[] = [];
-    if (checkFeatureAccess(user, "ai_memory", { throwIfDenied: false })) {
-      console.log(
-        `[ETL] [TRANSFORM] AI memory enabled, generating embeddings...`
-      );
-      chunks = chunkText(finalContent);
+      // Step 2: Generate AI insights (if enabled)
+      let summary: string | null = null;
+      let tags: string[] = [];
+      let mood: string | null = null;
 
-      try {
-        const embeddings = await generateEmbeddings(chunks);
-        await storeEmbeddings(userId, entryId, chunks, embeddings);
-      } catch (error) {
-        console.error("[ETL] [TRANSFORM] Embedding processing failed:", error);
-        // Continue without embeddings if they fail
+      if (
+        checkFeatureAccess(user, "summary_generation", { throwIfDenied: false })
+      ) {
+        console.log(`[ETL] [TRANSFORM] Generating AI summary...`);
+        try {
+          const summaryResponse = await openai.chat.completions.create({
+            model: "gpt-4",
+            messages: [
+              {
+                role: "user",
+                content: SUMMARY_PROMPT.replace("{content}", finalContent),
+              },
+            ],
+            max_tokens: 150,
+            temperature: 0.7,
+          });
+          summary =
+            summaryResponse.choices[0]?.message?.content?.trim() || null;
+          console.log(`[ETL] [TRANSFORM] Summary generated: ${summary}`);
+        } catch (error) {
+          console.error("[ETL] [TRANSFORM] Summary generation failed:", error);
+          throw new Error("Summary generation failed");
+        }
+      } else {
+        console.log(
+          `[ETL] [TRANSFORM] Summary generation skipped (not enabled for ${plan} tier)`
+        );
       }
-    } else {
-      console.log(`[ETL] [TRANSFORM] AI memory disabled, skipping embeddings`);
+
+      // Step 3: Extract tags (if enabled)
+      if (
+        checkFeatureAccess(user, "summary_generation", { throwIfDenied: false })
+      ) {
+        console.log(`[ETL] [TRANSFORM] Extracting tags from content...`);
+        try {
+          const tagsResponse = await openai.chat.completions.create({
+            model: "gpt-4",
+            messages: [
+              {
+                role: "user",
+                content: TAGS_PROMPT.replace("{content}", finalContent),
+              },
+            ],
+            max_tokens: 150,
+            temperature: 0.7,
+          });
+          tags =
+            tagsResponse.choices[0]?.message?.content
+              ?.split(",")
+              .map((t) => t.trim()) || [];
+          console.log(`[ETL] [TRANSFORM] Tags extracted: ${tags.join(", ")}`);
+        } catch (error) {
+          console.error("[ETL] [TRANSFORM] Tag extraction failed:", error);
+          throw new Error("Tag extraction failed");
+        }
+      } else {
+        console.log(
+          `[ETL] [TRANSFORM] Tag extraction skipped (not enabled for ${plan} tier)`
+        );
+      }
+
+      // Step 4: Analyze mood (if enabled)
+      if (checkFeatureAccess(user, "mood_analysis", { throwIfDenied: false })) {
+        console.log(`[ETL] [TRANSFORM] Analyzing mood of content...`);
+        try {
+          const moodResponse = await openai.chat.completions.create({
+            model: "gpt-4",
+            messages: [
+              {
+                role: "user",
+                content: MOOD_PROMPT.replace("{content}", finalContent),
+              },
+            ],
+            max_tokens: 150,
+            temperature: 0.7,
+          });
+          mood = moodResponse.choices[0]?.message?.content?.trim() || null;
+          console.log(`[ETL] [TRANSFORM] Mood analyzed: ${mood}`);
+        } catch (error) {
+          console.error("[ETL] [TRANSFORM] Mood analysis failed:", error);
+          throw new Error("Mood analysis failed");
+        }
+      } else {
+        console.log(
+          `[ETL] [TRANSFORM] Mood analysis skipped (not enabled for ${plan} tier)`
+        );
+      }
+
+      // Step 5: Store embeddings in Pinecone
+      let chunks: string[] = [];
+      if (userSettings.aiMemoryEnabled) {
+        console.log(`[ETL] [LOAD] Storing embeddings in Pinecone...`);
+        try {
+          chunks = chunkText(finalContent);
+          const embeddings = await generateEmbeddings(chunks);
+          await storeEmbeddings(userId, entryId, chunks, embeddings);
+        } catch (error) {
+          console.error("[ETL] [LOAD] Pinecone storage error:", error);
+          throw new Error("Failed to store embeddings");
+        }
+      } else {
+        console.log(
+          `[ETL] [LOAD] Embeddings skipped (aiMemoryEnabled: ${userSettings.aiMemoryEnabled})`
+        );
+      }
+
+      // Step 6: Update journal entry with AI insights
+      console.log(`[ETL] [LOAD] Updating journal entry with processed data...`);
+      await prisma.journalEntry.update({
+        where: { id: entryId },
+        data: {
+          content: finalContent,
+          summary,
+          tags,
+          mood,
+          chunks,
+          updatedAt: new Date(),
+        },
+      });
+      console.log(`[ETL] [LOAD] Entry updated successfully`);
+
+      console.log(
+        `[ETL] Job processing completed in ${Date.now() - startTime}ms`
+      );
+      return; // Success - exit the retry loop
+    } catch (error) {
+      retryCount++;
+      const processingTime = Date.now() - startTime;
+      console.error(
+        `[ETL] [ERROR] Failed to process entry ${entryId} (attempt ${retryCount}/${maxRetries}):`,
+        error
+      );
+      console.error(
+        `[ETL] [ERROR] Processing time before failure: ${processingTime}ms`
+      );
+
+      if (retryCount >= maxRetries) {
+        console.error(
+          `[ETL] [ERROR] Max retries reached for entry ${entryId}. Job will be marked as failed.`
+        );
+        throw error; // Re-throw to mark job as failed
+      }
+
+      // Wait before retrying (exponential backoff)
+      const waitTime = Math.min(1000 * Math.pow(2, retryCount - 1), 10000);
+      console.log(
+        `[ETL] [RETRY] Waiting ${waitTime}ms before retry ${retryCount + 1}...`
+      );
+      await new Promise((resolve) => setTimeout(resolve, waitTime));
     }
-
-    // Step 4: Update journal entry with AI insights
-    console.log(`[ETL] [LOAD] Updating journal entry with processed data...`);
-    await prisma.journalEntry.update({
-      where: { id: entryId },
-      data: {
-        content: finalContent,
-        summary,
-        tags,
-        mood,
-        chunks,
-        updatedAt: new Date(),
-      },
-    });
-    console.log(`[ETL] [LOAD] Entry updated successfully`);
-
-    const processingTime = Date.now() - startTime;
-    console.log(`[ETL] Job completed successfully for entry ${entryId}`);
-    console.log(`[ETL] Processing time: ${processingTime}ms`);
-  } catch (error) {
-    const processingTime = Date.now() - startTime;
-    console.error(`[ETL] [ERROR] Failed to process entry ${entryId}:`, error);
-    console.error(
-      `[ETL] [ERROR] Processing time before failure: ${processingTime}ms`
-    );
-    throw error;
   }
 }
 

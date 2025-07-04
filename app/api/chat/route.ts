@@ -4,7 +4,7 @@ import { validateRequest } from "@/utils/validation";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { openai } from "@/lib/openai";
-import { getPineconeIndex } from "@/lib/pinecone";
+import { getPineconeIndex, getUserNamespace } from "@/lib/pinecone";
 import { checkFeatureAccess } from "@/utils/access";
 import { loadUserSettings } from "@/utils/settings";
 import type { MembershipTier } from "@/types";
@@ -41,17 +41,26 @@ async function retrieveChatContext(
 
     const promptEmbedding = embeddingResponse.data[0].embedding;
 
-    // Query Pinecone for relevant chunks
+    // Get user's namespace and query Pinecone
     const index = getPineconeIndex();
-    const queryResponse = await index.query({
+    const namespace = getUserNamespace(userId);
+
+    console.log(`[CHAT] Querying namespace: ${namespace} for user: ${userId}`);
+
+    const queryResponse = await index.namespace(namespace).query({
       vector: promptEmbedding,
       topK: limit * 2, // Get more to filter
       includeMetadata: true,
       filter: {
-        userId: { $eq: userId },
         type: { $eq: "journal_chunk" },
       },
     });
+
+    console.log(
+      `[CHAT] Found ${
+        queryResponse.matches?.length || 0
+      } relevant chunks in namespace`
+    );
 
     if (!queryResponse.matches || queryResponse.matches.length === 0) {
       return [];
@@ -104,6 +113,7 @@ async function retrieveChatContext(
       };
     });
 
+    console.log(`[CHAT] Returning ${context.length} entries as context`);
     return context.sort((a, b) => b.relevanceScore - a.relevanceScore);
   } catch (error) {
     console.error("Error retrieving chat context:", error);

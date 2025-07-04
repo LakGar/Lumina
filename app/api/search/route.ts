@@ -135,9 +135,10 @@ async function performSemanticSearch(
 
     const queryEmbedding = embeddingResponse.data[0].embedding;
 
-    // Query Pinecone
+    // Query Pinecone in the user's namespace
     const index = getPineconeIndex();
-    const queryResponse = await index.query({
+    const namespace = require("@/lib/pinecone").getUserNamespace(userId);
+    const queryResponse = await index.namespace(namespace).query({
       vector: queryEmbedding,
       topK: limit * 2, // Get more results to filter
       includeMetadata: true,

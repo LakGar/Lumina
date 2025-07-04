@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
     const etlQueue = await getETLQueue();
     if (etlQueue) {
       try {
-        await etlQueue.add("journal-etl", {
+        await etlQueue.add("etl-pipeline", {
           entryId: journalEntry.id,
           userId: user.id,
           content: validatedData.content,

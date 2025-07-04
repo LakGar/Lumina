@@ -13,9 +13,6 @@ function getPinecone() {
   return globalForPinecone.pinecone;
 }
 
-// Export the Pinecone client directly
-export const pinecone = getPinecone();
-
 export const getPineconeIndex = () => {
   const client = getPinecone();
   return client.index(process.env.PINECONE_INDEX_NAME || "lumina-embeddings");
@@ -36,15 +33,15 @@ export const initializeUserNamespace = async (
 
     // Create a test vector to initialize the namespace
     // This ensures the namespace exists and is ready for use
-    const testVector = new Array(1536).fill(0); // Updated to match your Pinecone index dimension
+    const testVector = new Array(1536).fill(0.001); // Use small non-zero values instead of zeros
 
-    await index.upsert([
+    await index.namespace(namespace).upsert([
       {
         id: `${namespace}:init`,
         values: testVector,
         metadata: {
-          userId,
           namespace,
+          userId,
           type: "namespace_init",
           timestamp: new Date().toISOString(),
         },
@@ -65,9 +62,10 @@ export const initializeUserNamespace = async (
 export const deleteUserNamespace = async (userId: string): Promise<void> => {
   try {
     const index = getPineconeIndex();
+    const namespace = getUserNamespace(userId);
 
-    // Delete all vectors for this user using metadata filter
-    await index.deleteMany({
+    // Delete all vectors for this user using metadata filter in the correct namespace
+    await index.namespace(namespace).deleteMany({
       filter: {
         userId: { $eq: userId },
       },
@@ -94,4 +92,5 @@ export const getUserNamespaceInfo = (
   };
 };
 
-export default pinecone;
+// Export a function to get the Pinecone client (lazy initialization)
+export const getPineconeClient = () => getPinecone();
