@@ -10,8 +10,8 @@ const updateProfileSchema = z.object({
   fullName: z
     .string()
     .min(1, "Full name is required")
-    .max(100, "Full name too long")
-    .optional(),
+    .max(100, "Full name too long"),
+  bio: z.string().max(500, "Bio too long").optional(),
   avatarUrl: z.string().url("Invalid avatar URL").optional(),
 });
 
@@ -25,29 +25,26 @@ export async function GET(request: NextRequest) {
 
     const { user, profile } = authResult;
 
-    // Get subscription info
-    const subscription = await prisma.subscription.findUnique({
-      where: { userId: user.id },
-    });
+    if (!profile) {
+      return NextResponse.json(
+        { success: false, error: "Profile not found" },
+        { status: 404 }
+      );
+    }
 
-    // Get Pinecone namespace info
-    const pineconeInfo = getUserNamespaceInfo(user.id);
+    const profileData = {
+      id: profile.id,
+      fullName: profile.fullName,
+      email: profile.email,
+      avatarUrl: profile.avatarUrl,
+      membershipTier: profile.membershipTier,
+      createdAt: profile.createdAt.toISOString(),
+      bio: profile.bio || "",
+    };
 
     return NextResponse.json({
       success: true,
-      data: {
-        profile,
-        subscription: subscription
-          ? {
-              plan: subscription.plan,
-              status: subscription.status,
-              currentPeriodStart:
-                subscription.currentPeriodStart?.toISOString(),
-              currentPeriodEnd: subscription.currentPeriodEnd?.toISOString(),
-            }
-          : null,
-        pinecone: pineconeInfo,
-      },
+      data: profileData,
     });
   } catch (error) {
     console.error("GET /api/profile error:", error);
@@ -66,7 +63,14 @@ export async function PUT(request: NextRequest) {
       return authResult;
     }
 
-    const { user } = authResult;
+    const { user, profile } = authResult;
+
+    if (!profile) {
+      return NextResponse.json(
+        { success: false, error: "Profile not found" },
+        { status: 404 }
+      );
+    }
 
     // Parse and validate request body
     const body = await request.json();
@@ -77,14 +81,25 @@ export async function PUT(request: NextRequest) {
       where: { userId: user.id },
       data: {
         fullName: validatedData.fullName,
+        bio: validatedData.bio,
         avatarUrl: validatedData.avatarUrl,
+        updatedAt: new Date(),
       },
-      // Note: settings must be fetched separately via loadUserSettings
     });
+
+    const profileData = {
+      id: updatedProfile.id,
+      fullName: updatedProfile.fullName,
+      email: updatedProfile.email,
+      avatarUrl: updatedProfile.avatarUrl,
+      membershipTier: updatedProfile.membershipTier,
+      createdAt: updatedProfile.createdAt.toISOString(),
+      bio: updatedProfile.bio || "",
+    };
 
     return NextResponse.json({
       success: true,
-      data: updatedProfile,
+      data: profileData,
       message: "Profile updated successfully",
     });
   } catch (error) {

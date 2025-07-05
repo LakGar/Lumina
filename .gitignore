@@ -131,3 +131,6 @@ Thumbs.db
 
 # Prisma
 prisma/migrations/
+
+# Uploaded files
+public/uploads/

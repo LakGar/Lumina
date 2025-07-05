@@ -11,8 +11,8 @@ import type { MembershipTier } from "@/types";
 // Validation schema for export parameters
 const exportSchema = z.object({
   format: z.enum(["json", "pdf", "markdown"]).default("json"),
-  startDate: z.string().datetime().optional(),
-  endDate: z.string().datetime().optional(),
+  startDate: z.string().datetime().nullable().optional(),
+  endDate: z.string().datetime().nullable().optional(),
   includeSummaries: z.boolean().default(true),
   includeTags: z.boolean().default(true),
   includeMood: z.boolean().default(true),

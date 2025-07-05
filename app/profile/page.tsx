@@ -1,202 +1,141 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import ProtectedLayout from "@/components/layout/protected-layout";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { User, Mail, Calendar, Crown, Edit } from "lucide-react";
+import { ProfileEditor } from "@/components/profile/profile-editor";
+import { useSession } from "@/hooks/useSession";
+import { Loader2 } from "lucide-react";
+
+interface ProfileData {
+  id: string;
+  fullName: string;
+  email: string;
+  avatarUrl?: string;
+  membershipTier: string;
+  createdAt: string;
+  bio?: string;
+}
 
 export default function ProfilePage() {
+  const { session, loading, error } = useSession();
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileError, setProfileError] = useState<string | null>(null);
+
+  // Fetch profile data
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!session?.user) return;
+
+      try {
+        setProfileLoading(true);
+        setProfileError(null);
+
+        const response = await fetch("/api/profile");
+        const data = await response.json();
+
+        if (data.success) {
+          setProfileData(data.data);
+        } else {
+          setProfileError(data.error || "Failed to load profile");
+        }
+      } catch (err) {
+        setProfileError("Failed to load profile");
+        console.error("Error fetching profile:", err);
+      } finally {
+        setProfileLoading(false);
+      }
+    };
+
+    if (session?.user) {
+      fetchProfile();
+    }
+  }, [session?.user]);
+
+  // Handle profile updates
+  const handleProfileSave = async (data: Partial<ProfileData>) => {
+    try {
+      const response = await fetch("/api/profile", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Update local state with new data
+        setProfileData((prev) => (prev ? { ...prev, ...result.data } : null));
+        return { success: true, message: result.message };
+      } else {
+        return { success: false, message: result.error };
+      }
+    } catch (err) {
+      return { success: false, message: "Failed to update profile" };
+    }
+  };
+
+  if (loading || profileLoading) {
+    return (
+      <ProtectedLayout>
+        <div className="h-full">
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold tracking-tight">Profile</h1>
+            <p className="text-muted-foreground">
+              Manage your personal information and account details
+            </p>
+          </div>
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+        </div>
+      </ProtectedLayout>
+    );
+  }
+
+  if (error || profileError) {
+    return (
+      <ProtectedLayout>
+        <div className="h-full">
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold tracking-tight">Profile</h1>
+            <p className="text-muted-foreground">
+              Manage your personal information and account details
+            </p>
+          </div>
+          <div className="text-center py-12">
+            <p className="text-red-600 mb-4">
+              {error || profileError || "An error occurred"}
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </ProtectedLayout>
+    );
+  }
+
   return (
     <ProtectedLayout>
-      <div className="space-y-6">
-        <div>
+      <div className="h-full">
+        <div className="mb-6">
           <h1 className="text-2xl font-bold tracking-tight">Profile</h1>
           <p className="text-muted-foreground">
             Manage your personal information and account details
           </p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-3">
-          {/* Profile Overview */}
-          <div className="md:col-span-1">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  Profile Overview
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-center">
-                  <div className="relative">
-                    <img
-                      className="h-24 w-24 rounded-full"
-                      src="/default-avatar.png"
-                      alt="Profile"
-                    />
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full p-0"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-                <div className="text-center">
-                  <h3 className="text-lg font-medium">User Name</h3>
-                  <p className="text-sm text-muted-foreground">
-                    user@example.com
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Crown className="h-4 w-4 text-yellow-500" />
-                    <span>Free Plan</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Calendar className="h-4 w-4" />
-                    <span>Member since January 2024</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Profile Details */}
-          <div className="md:col-span-2 space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Personal Information</CardTitle>
-                <CardDescription>
-                  Update your personal details and contact information
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="text-sm font-medium">Full Name</label>
-                    <input
-                      type="text"
-                      placeholder="Enter your full name"
-                      className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Email</label>
-                    <input
-                      type="email"
-                      placeholder="Enter your email"
-                      className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Bio</label>
-                  <textarea
-                    placeholder="Tell us about yourself"
-                    rows={3}
-                    className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  />
-                </div>
-                <div className="flex justify-end">
-                  <Button>Save Changes</Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Account Information</CardTitle>
-                <CardDescription>
-                  View your account details and subscription information
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">
-                      Account ID
-                    </label>
-                    <p className="text-sm font-medium">user-123456</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">
-                      Member Since
-                    </label>
-                    <p className="text-sm font-medium">January 2024</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">
-                      Current Plan
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <Crown className="h-4 w-4 text-yellow-500" />
-                      <span className="text-sm font-medium">Free Plan</span>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">
-                      Status
-                    </label>
-                    <p className="text-sm font-medium text-green-600">Active</p>
-                  </div>
-                </div>
-                <div className="flex justify-end">
-                  <Button variant="outline">Upgrade Plan</Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Privacy Settings</CardTitle>
-                <CardDescription>
-                  Manage your privacy preferences and data sharing
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Profile Visibility</p>
-                    <p className="text-sm text-muted-foreground">
-                      Control who can see your profile information
-                    </p>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    Configure
-                  </Button>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Data Sharing</p>
-                    <p className="text-sm text-muted-foreground">
-                      Manage how your data is used for AI insights
-                    </p>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    Configure
-                  </Button>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Email Notifications</p>
-                    <p className="text-sm text-muted-foreground">
-                      Control email notification preferences
-                    </p>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    Configure
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+        <ProfileEditor
+          profile={profileData}
+          onSave={handleProfileSave}
+          loading={profileLoading}
+        />
       </div>
     </ProtectedLayout>
   );

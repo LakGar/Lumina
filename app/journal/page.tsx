@@ -20,9 +20,13 @@ import {
   Tag,
   Save,
   X,
+  Loader2,
 } from "lucide-react";
 import { useJournal } from "@/hooks/useJournal";
 import { format } from "date-fns";
+import { motion } from "framer-motion";
+import { AnimatedTag } from "@/components/ui/animated-tag";
+import { TypewriterSummary } from "@/components/ui/typewriter-summary";
 
 export default function JournalPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -42,6 +46,8 @@ export default function JournalPage() {
     updateEntry,
     deleteEntry,
     setFilters,
+    processingEntries,
+    completedEntries,
   } = useJournal({ limit: 20 });
 
   const handleSearch = (value: string) => {
@@ -219,132 +225,206 @@ export default function JournalPage() {
           ) : (
             <>
               <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
-                  {total} entries total
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-muted-foreground">
+                    {total} entries total
+                  </p>
+                  {processingEntries.size > 0 && (
+                    <div className="flex items-center gap-1">
+                      <Loader2 className="h-3 w-3 text-blue-500 animate-spin" />
+                      <span className="text-xs text-blue-600">
+                        {processingEntries.size} processing
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {entries.map((entry) => (
-                <Card
+                <motion.div
                   key={entry.id}
-                  className="hover:shadow-md transition-shadow"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5 }}
                 >
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm text-muted-foreground">
-                            {format(
-                              new Date(entry.createdAt),
-                              "MMM d, yyyy 'at' h:mm a"
-                            )}
-                          </span>
-                        </div>
-                        {entry.mood && (
+                  <Card
+                    className={`hover:shadow-md transition-all duration-300 ${
+                      processingEntries.has(entry.id)
+                        ? "bg-blue-50/30 border-blue-200"
+                        : ""
+                    }`}
+                  >
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
-                            <span className="text-sm font-medium">Mood:</span>
-                            <span className="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                              {entry.mood}
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm text-muted-foreground">
+                              {format(
+                                new Date(entry.createdAt),
+                                "MMM d, yyyy 'at' h:mm a"
+                              )}
                             </span>
                           </div>
-                        )}
-                        {entry.tags.length > 0 && (
-                          <div className="flex items-center gap-2 mb-2">
-                            <Tag className="h-4 w-4 text-muted-foreground" />
-                            <div className="flex gap-1">
-                              {entry.tags.map((tag, index) => (
-                                <span
-                                  key={index}
-                                  className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded"
+                          {processingEntries.has(entry.id) ? (
+                            <motion.div
+                              className="flex items-center gap-2 mb-2"
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              transition={{ duration: 0.3 }}
+                            >
+                              <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
+                              <span className="text-sm text-blue-600">
+                                Processing with AI...
+                              </span>
+                            </motion.div>
+                          ) : (
+                            <>
+                              {entry.mood && (
+                                <motion.div
+                                  className="flex items-center gap-2 mb-2"
+                                  initial={
+                                    completedEntries.has(entry.id)
+                                      ? { opacity: 0, x: -10 }
+                                      : false
+                                  }
+                                  animate={{ opacity: 1, x: 0 }}
+                                  transition={{
+                                    duration: completedEntries.has(entry.id)
+                                      ? 0.5
+                                      : 0,
+                                    delay: completedEntries.has(entry.id)
+                                      ? 0.2
+                                      : 0,
+                                  }}
                                 >
-                                  {tag}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+                                  <span className="text-sm font-medium">
+                                    Mood:
+                                  </span>
+                                  <span className="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                    {entry.mood}
+                                  </span>
+                                </motion.div>
+                              )}
+                              {entry.tags && entry.tags.length > 0 && (
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Tag className="h-4 w-4 text-muted-foreground" />
+                                  <div className="flex gap-1">
+                                    {entry.tags.map((tag, index) => (
+                                      <AnimatedTag
+                                        key={index}
+                                        tag={tag}
+                                        index={index}
+                                        delay={0.15}
+                                        shouldAnimate={completedEntries.has(
+                                          entry.id
+                                        )}
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {editingEntry === entry.id ? (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleSaveEdit}
+                                disabled={isUpdating || !editContent.trim()}
+                              >
+                                <Save className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleCancelEdit}
+                                disabled={isUpdating}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEditEntry(entry)}
+                                disabled={editingEntry !== null}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteEntry(entry.id)}
+                                disabled={editingEntry !== null}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {editingEntry === entry.id ? (
-                          <>
+                    </CardHeader>
+                    <CardContent>
+                      {editingEntry === entry.id ? (
+                        <>
+                          <textarea
+                            placeholder="Edit your entry..."
+                            value={editContent}
+                            onChange={(e) => setEditContent(e.target.value)}
+                            rows={6}
+                            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                          />
+                          <div className="flex justify-end space-x-2 mt-4">
                             <Button
-                              variant="ghost"
-                              size="sm"
+                              variant="outline"
+                              onClick={handleCancelEdit}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
                               onClick={handleSaveEdit}
                               disabled={isUpdating || !editContent.trim()}
                             >
-                              <Save className="h-4 w-4" />
+                              {isUpdating ? "Saving..." : "Save Changes"}
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={handleCancelEdit}
-                              disabled={isUpdating}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </>
-                        ) : (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditEntry(entry)}
-                              disabled={editingEntry !== null}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteEntry(entry.id)}
-                              disabled={editingEntry !== null}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    {editingEntry === entry.id ? (
-                      <>
-                        <textarea
-                          placeholder="Edit your entry..."
-                          value={editContent}
-                          onChange={(e) => setEditContent(e.target.value)}
-                          rows={6}
-                          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                        />
-                        <div className="flex justify-end space-x-2 mt-4">
-                          <Button variant="outline" onClick={handleCancelEdit}>
-                            Cancel
-                          </Button>
-                          <Button
-                            onClick={handleSaveEdit}
-                            disabled={isUpdating || !editContent.trim()}
-                          >
-                            {isUpdating ? "Saving..." : "Save Changes"}
-                          </Button>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="prose prose-sm max-w-none">
+                          <p className="whitespace-pre-wrap">{entry.content}</p>
                         </div>
-                      </>
-                    ) : (
-                      <div className="prose prose-sm max-w-none">
-                        <p className="whitespace-pre-wrap">{entry.content}</p>
-                      </div>
-                    )}
-                    {entry.summary && (
-                      <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                        <p className="text-sm font-medium text-blue-900 mb-1">
-                          AI Summary:
-                        </p>
-                        <p className="text-sm text-blue-800">{entry.summary}</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                      )}
+                      {processingEntries.has(entry.id) ? (
+                        <motion.div
+                          className="mt-4 p-3 bg-blue-50 rounded-lg"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.4 }}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
+                            <p className="text-sm font-medium text-blue-900">
+                              Generating AI summary...
+                            </p>
+                          </div>
+                        </motion.div>
+                      ) : entry.summary ? (
+                        <TypewriterSummary
+                          text={entry.summary}
+                          speed={25}
+                          delay={0.3}
+                          shouldAnimate={completedEntries.has(entry.id)}
+                        />
+                      ) : null}
+                    </CardContent>
+                  </Card>
+                </motion.div>
               ))}
             </>
           )}
