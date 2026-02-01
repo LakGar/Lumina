@@ -1,0 +1,146 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id      Int     @id @default(autoincrement())
+  clerkId String? @unique
+
+  email              String    @unique
+  name               String
+  password           String?
+  provider           String
+  journal            Journal[]
+  mood               Mood[]
+  onboardingComplete Boolean   @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Mood {
+  id       Int     @id @default(autoincrement())
+  title    String
+  note     String?
+  author   User    @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId Int
+}
+
+model Journal {
+  id      Int            @id @default(autoincrement())
+  title   String
+  entries JournalEntry[]
+  public  Boolean        @default(false)
+
+  author   User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model JournalEntry {
+  id Int @id @default(autoincrement())
+
+  journal   Journal @relation(fields: [journalId], references: [id], onDelete: Cascade)
+  journalId Int
+
+  // source-of-truth content
+  content String      @db.Text
+  source  EntrySource @default(TEXT) // TEXT or VOICE
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // relations (optional derived/attachments)
+  voiceRecording VoiceRecording?
+  summary        EntrySummary?
+  mood           EntryMood?
+  tags           EntryTag[]
+
+  @@index([journalId, createdAt])
+}
+
+enum EntrySource {
+  TEXT
+  VOICE
+  MIXED
+}
+
+model VoiceRecording {
+  id Int @id @default(autoincrement())
+
+  entry   JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  entryId Int          @unique
+
+  s3Url     String
+  durationS Int?
+  mimeType  String?
+
+  transcription Transcription?
+
+  createdAt DateTime @default(now())
+}
+
+model Transcription {
+  id Int @id @default(autoincrement())
+
+  recording   VoiceRecording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+  recordingId Int            @unique
+
+  text      String   @db.Text
+  createdAt DateTime @default(now())
+}
+
+model EntrySummary {
+  id Int @id @default(autoincrement())
+
+  entry   JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  entryId Int          @unique
+
+  text      String   @db.Text
+  model     String?
+  createdAt DateTime @default(now())
+}
+
+model EntryMood {
+  id Int @id @default(autoincrement())
+
+  entry   JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  entryId Int          @unique
+
+  // could be enum if you want strict moods
+  label     String // "anxious", "calm", ...
+  score     Float? // optional intensity/confidence
+  createdAt DateTime @default(now())
+}
+
+model EntryTag {
+  id Int @id @default(autoincrement())
+
+  entry   JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  entryId Int
+
+  tag    String // "work", "relationships", "health", ...
+  source TagSource @default(AI)
+
+  @@unique([entryId, tag])
+  @@index([entryId])
+}
+
+enum TagSource {
+  AI
+  USER
+}
