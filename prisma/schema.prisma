@@ -20,6 +20,7 @@ model User {
 
   email              String    @unique
   name               String
+  prefferdName       String?
   password           String?
   provider           String
   journal            Journal[]

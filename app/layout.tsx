@@ -1,9 +1,8 @@
 import { type Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
-import { ThemeProvider } from "./component/theme-provider";
+import { ThemeProvider } from "@/components/theme-provider";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import ThemeToggle from "./component/themeToggle";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

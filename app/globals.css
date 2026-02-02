@@ -192,3 +192,22 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Prompt / journal input – themed scrollbar */
+.prompt-input-box textarea {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.prompt-input-box textarea::-webkit-scrollbar {
+  width: 6px;
+}
+.prompt-input-box textarea::-webkit-scrollbar-track {
+  background: transparent;
+}
+.prompt-input-box textarea::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+.prompt-input-box textarea::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}

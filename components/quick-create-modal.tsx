@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { X } from "lucide-react";
+import { X, BookOpen } from "lucide-react";
 import { PromptInputBox } from "@/components/ui/ai-prompt-box";
 import {
   Select,
@@ -13,29 +13,26 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
-/** Mock journals for frontend; replace with API later */
+// Mock journals for frontend – replace with API later
 const MOCK_JOURNALS = [
-  { id: "today", title: "Today's Journal" },
-  { id: "weekly", title: "Weekly Reflection" },
-  { id: "gratitude", title: "Gratitude Log" },
-  { id: "dreams", title: "Dream Journal" },
-  { id: "new", title: "New journal..." },
+  { id: "today", title: "Today" },
+  { id: "work", title: "Work" },
+  { id: "personal", title: "Personal" },
+  { id: "gratitude", title: "Gratitude" },
+  { id: "ideas", title: "Ideas" },
 ];
 
 const QuickCreateModal = ({
   open,
   onOpenChange,
   onSend,
-  journals = MOCK_JOURNALS,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSend?: (message: string, files?: File[]) => void;
-  /** List of journals for the dropdown; defaults to mock data */
-  journals?: { id: string; title: string }[];
 }) => {
   const [selectedJournalId, setSelectedJournalId] = React.useState(
-    journals[0]?.id ?? "today",
+    MOCK_JOURNALS[0]?.id ?? "",
   );
 
   return (
@@ -72,32 +69,31 @@ const QuickCreateModal = ({
               <X className="h-4 w-4" />
             </button>
 
-            <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="journal-select"
-                className="text-xs font-medium text-muted-foreground"
-              >
-                Document
-              </label>
-              <Select
-                value={selectedJournalId}
-                onValueChange={setSelectedJournalId}
-              >
-                <SelectTrigger id="journal-select" className="w-full">
-                  <SelectValue placeholder="Select a journal" />
-                </SelectTrigger>
-                <SelectContent>
-                  {journals.map((journal) => (
-                    <SelectItem key={journal.id} value={journal.id}>
-                      {journal.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
             <PromptInputBox
-              mode="journal"
+              variant="journal"
+              prefixContent={
+                <div className="flex items-center gap-2 w-full">
+                  <BookOpen className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <Select
+                    value={selectedJournalId}
+                    onValueChange={setSelectedJournalId}
+                  >
+                    <SelectTrigger className="flex-1 min-w-0 border-0 bg-transparent shadow-none text-sm font-medium text-foreground focus:ring-0 focus-visible:ring-0 h-auto py-0">
+                      <SelectValue placeholder="Choose journal" />
+                    </SelectTrigger>
+                    <SelectContent
+                      align="start"
+                      className="min-w-[var(--radix-select-trigger-width)]"
+                    >
+                      {MOCK_JOURNALS.map((journal) => (
+                        <SelectItem key={journal.id} value={journal.id}>
+                          {journal.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              }
               onSend={(message, files) => {
                 onSend?.(message, files);
                 onOpenChange(false);
