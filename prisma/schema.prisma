@@ -25,7 +25,7 @@ model User {
   provider           String
   journal            Journal[]
   mood               Mood[]
-  onboardingComplete Boolean   @default(true)
+  onboardingComplete Boolean   @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
