@@ -23,9 +23,62 @@ model User {
   prefferdName       String?
   password           String?
   provider           String
+  userPrefferences   userPrefferences?
+  notification       Notification?
+  billing            Billing?
   journal            Journal[]
   mood               Mood[]
+
   onboardingComplete Boolean   @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model userPrefferences {
+  id     Int    @id @default(autoincrement())
+  theme  Theme  @default(SYSTEM)
+  goal   String?
+  topics String?
+  reason String?
+
+  aiSummariesEnabled    Boolean @default(true)
+  autoTaggingEnabled    Boolean @default(true)
+  moodDetectionEnabled  Boolean @default(true)
+  aiTone                String? // "supportive" | "neutral" | "coach"
+
+  author   User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId Int  @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Notification {
+  id        Int     @id @default(autoincrement())
+  dailyReminderEnabled Boolean @default(false)
+  dailyReminderTime    String?  // "20:30" (HH:mm)
+  timezone             String?  // e.g. "America/Los_Angeles"
+  frequency            NotificationFrequency?
+
+  author   User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId Int  @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Billing {
+  id                   Int       @id @default(autoincrement())
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId               Int       @unique
+
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?   @unique
+
+  plan             String?   // "free" | "pro"
+  status           String?   // "active" | "trialing" | "past_due" | "canceled" etc.
+  currentPeriodEnd DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -144,4 +197,16 @@ model EntryTag {
 enum TagSource {
   AI
   USER
+}
+
+enum Theme {
+  DARK 
+  LIGHT
+  SYSTEM
+}
+
+enum NotificationFrequency {
+  DAILY
+  WEEKLY
+  ALTERNATE
 }
