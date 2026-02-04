@@ -9,9 +9,7 @@ export const logger = pino({
   formatters: {
     level: (label) => ({ level: label }),
   },
-  ...(process.env.LOG_FORMAT === "pretty"
-    ? { transport: { target: "pino-pretty", options: { colorize: true } } }
-    : {}),
+  // Avoid pino-pretty in server bundle (breaks Next build). Use `LOG_FORMAT=json` or pipe stdout through pino-pretty.
 });
 
 export type RequestLogMeta = {

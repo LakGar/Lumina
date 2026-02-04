@@ -3,6 +3,7 @@ import { requireAuth } from "@/app/api/_lib/auth";
 import { finishRequest, getRequestId } from "@/app/api/_lib/logger";
 import { corsPreflight } from "@/app/api/_lib/cors";
 import { getStripe, getOrCreateStripeCustomerId } from "@/app/api/_lib/stripe";
+import { getAppBaseUrl } from "@/app/api/_lib/app-url";
 import { PrismaClient } from "@/app/generated/prisma/client";
 
 const prisma = new PrismaClient();
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest) {
     });
     const email = user?.email ?? "";
     const customerId = await getOrCreateStripeCustomerId(auth.user.id, email);
-    const baseUrl = process.env.APP_URL ?? req.nextUrl.origin;
+    const baseUrl = getAppBaseUrl(req);
     const stripe = getStripe();
     const session = await stripe.billingPortal.sessions.create({
       customer: customerId,

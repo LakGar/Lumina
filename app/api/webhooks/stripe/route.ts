@@ -73,13 +73,14 @@ export async function POST(req: NextRequest) {
       }
       const stripe = getStripe();
       const sub = await stripe.subscriptions.retrieve(subscriptionId);
+      const periodEnd = "current_period_end" in sub ? Number(sub.current_period_end) * 1000 : null;
       await prisma.billing.updateMany({
         where: { userId: parseInt(userId, 10) },
         data: {
           stripeSubscriptionId: subscriptionId,
           plan: "pro",
           status: sub.status,
-          currentPeriodEnd: new Date(sub.current_period_end * 1000),
+          currentPeriodEnd: periodEnd ? new Date(periodEnd) : null,
         },
       });
     } else if (
@@ -87,13 +88,14 @@ export async function POST(req: NextRequest) {
       event.type === "customer.subscription.updated"
     ) {
       const sub = event.data.object as Stripe.Subscription;
+      const periodEnd = "current_period_end" in sub ? Number(sub.current_period_end) * 1000 : null;
       await prisma.billing.updateMany({
         where: { stripeCustomerId: sub.customer as string },
         data: {
           stripeSubscriptionId: sub.id,
           plan: sub.status === "active" ? "pro" : null,
           status: sub.status,
-          currentPeriodEnd: new Date(sub.current_period_end * 1000),
+          currentPeriodEnd: periodEnd ? new Date(periodEnd) : null,
         },
       });
     } else if (event.type === "customer.subscription.deleted") {

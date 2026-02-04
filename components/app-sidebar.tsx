@@ -37,24 +37,24 @@ const data = {
     },
     {
       title: "Journals",
-      url: "#",
+      url: "/journals",
       icon: IconBook2,
     },
     {
       title: "Entries",
-      url: "#",
+      url: "/dashboard",
       icon: IconChartBar,
     },
     {
       title: "Tags",
-      url: "#",
+      url: "/dashboard",
       icon: IconTag,
     },
   ],
   navSecondary: [
     {
       title: "Settings",
-      url: "#",
+      url: "/settings",
       icon: IconSettings,
     },
     {

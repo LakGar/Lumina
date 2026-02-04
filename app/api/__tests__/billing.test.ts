@@ -98,7 +98,25 @@ describe("POST /api/billing/checkout", () => {
     expect((response as NextResponse).status).toBe(503);
   });
 
-  it("uses APP_URL for success_url when set", async () => {
+  it("uses request origin for success_url in development", async () => {
+    const req = createRequest(
+      "https://geoffrey-unkneaded-conqueringly.ngrok-free.dev/api/billing/checkout",
+      "POST",
+    );
+    await POST_CHECKOUT(req);
+    expect(mockStripeCheckoutSessionsCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success_url:
+          "https://geoffrey-unkneaded-conqueringly.ngrok-free.dev/dashboard?checkout=success",
+        cancel_url:
+          "https://geoffrey-unkneaded-conqueringly.ngrok-free.dev/dashboard?checkout=cancel",
+      }),
+    );
+  });
+
+  it("uses APP_URL for success_url in production", async () => {
+    const prevNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
     process.env.APP_URL = "https://app.lumina.com";
     const req = createRequest("http://localhost/api/billing/checkout", "POST");
     await POST_CHECKOUT(req);
@@ -108,6 +126,7 @@ describe("POST /api/billing/checkout", () => {
         cancel_url: "https://app.lumina.com/dashboard?checkout=cancel",
       }),
     );
+    process.env.NODE_ENV = prevNodeEnv;
   });
 });
 

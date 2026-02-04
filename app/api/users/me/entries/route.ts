@@ -3,8 +3,7 @@ import { PrismaClient } from "@/app/generated/prisma/client";
 import { requireAuth } from "@/app/api/_lib/auth";
 import { finishRequest, getRequestId } from "@/app/api/_lib/logger";
 import { corsPreflight } from "@/app/api/_lib/cors";
-import { getStripe, getOrCreateStripeCustomerId } from "@/app/api/_lib/stripe";
-import { getAppBaseUrl } from "@/app/api/_lib/app-url";
+import { checkRateLimit } from "@/app/api/_lib/rate-limit";
 
 const prisma = new PrismaClient();
 
@@ -12,7 +11,7 @@ export async function OPTIONS() {
   return corsPreflight();
 }
 
-export async function POST(req: NextRequest) {
+export async function GET(req: NextRequest) {
   const requestId = getRequestId(req);
   const start = Date.now();
   const auth = await requireAuth();
@@ -23,39 +22,33 @@ export async function POST(req: NextRequest) {
       statusCode: auth.response.status,
     });
   }
-  const priceId = process.env.STRIPE_PRICE_ID_PRO;
-  if (!priceId) {
+  const limit = Math.min(Number(req.nextUrl.searchParams.get("limit")) || 50, 100);
+  const rate = checkRateLimit(String(auth.user.id));
+  if (!rate.ok) {
     const res = NextResponse.json(
-      { error: "Billing not configured" },
-      { status: 503 },
+      { error: "Too many requests", retryAfter: rate.retryAfter },
+      { status: 429, headers: { "Retry-After": String(rate.retryAfter) } },
     );
     return finishRequest(req, res, {
       requestId,
       userId: auth.userId,
       start,
-      statusCode: 503,
+      statusCode: 429,
     });
   }
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: auth.user.id },
-      select: { email: true },
+    const entries = await prisma.journalEntry.findMany({
+      where: { journal: { authorId: auth.user.id } },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      include: {
+        journal: { select: { id: true, title: true } },
+        summary: true,
+        mood: true,
+        tags: true,
+      },
     });
-    const email = user?.email ?? "";
-    const customerId = await getOrCreateStripeCustomerId(auth.user.id, email);
-    const baseUrl = getAppBaseUrl(req);
-    const stripe = getStripe();
-    const session = await stripe.checkout.sessions.create({
-      customer: customerId,
-      mode: "subscription",
-      line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${baseUrl}/dashboard?checkout=success`,
-      cancel_url: `${baseUrl}/dashboard?checkout=cancel`,
-      metadata: { luminaUserId: String(auth.user.id) },
-    });
-    const res = NextResponse.json({
-      data: { url: session.url, sessionId: session.id },
-    });
+    const res = NextResponse.json({ data: entries });
     return finishRequest(req, res, {
       requestId,
       userId: auth.userId,
@@ -65,7 +58,7 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     const err = e as Error;
     const res = NextResponse.json(
-      { error: "Failed to create checkout session" },
+      { error: "Failed to list entries" },
       { status: 500 },
     );
     return finishRequest(req, res, {
