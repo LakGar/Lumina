@@ -47,6 +47,7 @@ import {
   type SortingState,
   type VisibilityState,
 } from "@tanstack/react-table";
+import Link from "next/link";
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -212,7 +213,7 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
   },
   {
     id: "actions",
-    cell: () => (
+    cell: ({ row }) => (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -225,16 +226,46 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-32">
-          <DropdownMenuItem>Edit</DropdownMenuItem>
-          <DropdownMenuItem>Make a copy</DropdownMenuItem>
-          <DropdownMenuItem>Favorite</DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive">Delete</DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href={`/entries/${row.original.id}`}>Edit</Link>
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     ),
   },
 ];
+
+function buildColumnsWithDelete(
+  onDelete: (id: number) => void,
+): ColumnDef<z.infer<typeof schema>>[] {
+  return columns.map((col) => {
+    if (col.id === "actions") {
+      return {
+        ...col,
+        cell: ({ row }: { row: Row<z.infer<typeof schema>> }) => (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="data-[state=open]:bg-muted text-muted-foreground flex size-8" size="icon">
+                <IconDotsVertical />
+                <span className="sr-only">Open menu</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-32">
+              <DropdownMenuItem asChild>
+                <Link href={`/entries/${row.original.id}`}>Edit</Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem variant="destructive" onClick={() => onDelete(row.original.id)}>
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ),
+      };
+    }
+    return col;
+  });
+}
 
 function DraggableRow({ row }: { row: Row<z.infer<typeof schema>> }) {
   const { transform, transition, setNodeRef, isDragging } = useSortable({
@@ -263,10 +294,17 @@ function DraggableRow({ row }: { row: Row<z.infer<typeof schema>> }) {
 
 export function DataTable({
   data: initialData,
+  onDelete,
+  onNewEntryClick,
 }: {
   data: z.infer<typeof schema>[];
+  onDelete?: (id: number) => void;
+  onNewEntryClick?: () => void;
 }) {
   const [data, setData] = React.useState(() => initialData);
+  React.useEffect(() => {
+    setData(initialData);
+  }, [initialData]);
   const [rowSelection, setRowSelection] = React.useState({});
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
@@ -279,6 +317,10 @@ export function DataTable({
     pageSize: 10,
   });
   const sortableId = React.useId();
+  const tableColumns = React.useMemo(
+    () => (onDelete ? buildColumnsWithDelete(onDelete) : columns),
+    [onDelete],
+  );
   const sensors = useSensors(
     useSensor(MouseSensor, {}),
     useSensor(TouchSensor, {}),
@@ -292,7 +334,7 @@ export function DataTable({
 
   const table = useReactTable({
     data,
-    columns,
+    columns: tableColumns,
     state: {
       sorting,
       columnVisibility,
@@ -389,7 +431,7 @@ export function DataTable({
                 })}
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={onNewEntryClick}>
             <IconPlus />
             <span className="hidden lg:inline">New entry</span>
           </Button>
@@ -439,7 +481,7 @@ export function DataTable({
                 ) : (
                   <TableRow>
                     <TableCell
-                      colSpan={columns.length}
+                      colSpan={tableColumns.length}
                       className="h-24 text-center"
                     >
                       No results.

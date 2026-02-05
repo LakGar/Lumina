@@ -11,7 +11,7 @@ Reference: [app/dashboard/page.tsx](app/dashboard/page.tsx) – keep GitHub-styl
 - [x] API client + Zod response schemas (journals, entries, moods, preferences, notification, billing)
 - [x] Server-side rate limiting on API routes (per user) – `GET /api/users/me/entries`
 - [x] QueryClientProvider in root layout
-- [ ] Zustand store for UI state (e.g. sidebar, modals) if needed
+- [x] Zustand store for UI state (new entry sheet open)
 
 ## Phase 2: Dashboard (real data)
 
@@ -38,10 +38,10 @@ Reference: [app/dashboard/page.tsx](app/dashboard/page.tsx) – keep GitHub-styl
 
 ## Phase 5: Polish & nav
 
-- [ ] Sidebar/nav: real links (Journals, Entries, Settings), optional “By journal” docs from API
-- [ ] “New entry” in header/table goes to create flow
-- [ ] Empty states for no journals / no entries
-- [ ] Build + test; push to GitHub after each phase (or feature)
+- [x] Sidebar: documents from journals API (real journal links); user from Clerk; Sign out via Clerk
+- [x] “New entry” in table header opens global New Entry sheet (journal pick + content); Zustand store
+- [x] DataTable: Edit → `/entries/[id]`; Delete with callback; empty state when no entries
+- [x] Dashboard empty state: “No entries yet” + New entry button
 
 ---
 

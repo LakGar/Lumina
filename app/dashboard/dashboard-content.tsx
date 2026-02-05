@@ -1,7 +1,9 @@
 "use client";
 
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ChartAreaInteractive } from "@/components/chart-area-interactive";
 import { DataTable } from "@/components/data-table";
+import { NewEntrySheet } from "@/components/new-entry-sheet";
 import { SectionCards } from "@/components/section-cards";
 import { SiteHeader } from "@/components/site-header";
 import {
@@ -10,9 +12,14 @@ import {
 } from "@/components/ui/git-hub-calendar";
 import { SidebarInset } from "@/components/ui/sidebar";
 import { useDashboardData } from "@/lib/hooks/use-dashboard";
+import { useUIStore } from "@/lib/store/ui";
+import { apiClient } from "@/lib/api/client";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
 
 export function DashboardContent() {
+  const queryClient = useQueryClient();
   const {
     tableRows,
     contributionData,
@@ -20,6 +27,16 @@ export function DashboardContent() {
     journals,
     entries,
   } = useDashboardData();
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => apiClient.entries.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["me", "entries"] });
+      queryClient.invalidateQueries({ queryKey: ["journals"] });
+      toast.success("Entry deleted");
+    },
+    onError: (err: Error) => toast.error(err.message ?? "Failed to delete"),
+  });
 
   const isLoading = journals.isLoading || entries.isLoading;
   const isError = journals.isError || entries.isError;
@@ -39,6 +56,7 @@ export function DashboardContent() {
 
   return (
     <SidebarInset>
+      <NewEntrySheet />
       <SiteHeader />
       <div className="flex flex-1 flex-col">
         <div className="@container/main flex flex-1 flex-col gap-2">
@@ -88,8 +106,25 @@ export function DashboardContent() {
                 <div className="px-4 lg:px-6">
                   <Skeleton className="h-64 w-full rounded-lg" />
                 </div>
+              ) : tableRows.length === 0 ? (
+                <div className="px-4 lg:px-6">
+                  <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12 text-center">
+                    <p className="text-muted-foreground text-sm">No entries yet.</p>
+                    <p className="text-muted-foreground mt-1 text-sm">Create a journal and add your first entry.</p>
+                    <Button
+                      className="mt-4"
+                      onClick={() => useUIStore.getState().setNewEntryOpen(true)}
+                    >
+                      New entry
+                    </Button>
+                  </div>
+                </div>
               ) : (
-                <DataTable data={tableRows} />
+                <DataTable
+                  data={tableRows}
+                  onDelete={(id) => deleteMutation.mutate(id)}
+                  onNewEntryClick={() => useUIStore.getState().setNewEntryOpen(true)}
+                />
               )}
             </div>
           </div>
