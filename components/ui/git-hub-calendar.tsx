@@ -45,157 +45,6 @@ const THEME_LEVEL_CLASSES = [
 
 type ViewMode = "trailing" | number;
 
-// Pixel pattern for "LUMINA" in default (trailing) view: [wordCol, row] where wordCol 0–33, row 0 (Sun)–6 (Sat)
-const LUMINA_WORD_START_COL = 9;
-const LUMINA_PATTERN: [number, number][] = [
-  // L (cols 0–4): 9 blocks = vertical col 0 rows 1–6 (6) + bottom row 6 cols 1–3 (3)
-  [-1, 1],
-  [-1, 2],
-  [-1, 3],
-  [-1, 4],
-  [-1, 5],
-  [-1, 6],
-  [0, 1],
-  [0, 2],
-  [0, 3],
-  [0, 4],
-  [0, 5],
-  [0, 6],
-  [1, 6],
-  [2, 6],
-  [3, 6],
-
-  [5, 1],
-  [5, 2],
-  [5, 3],
-  [5, 4],
-  [5, 5],
-  [5, 6],
-  [6, 1],
-  [6, 2],
-  [6, 3],
-  [6, 4],
-  [6, 5],
-  [6, 6],
-  [7, 6],
-  [8, 6],
-  [9, 1],
-  [9, 2],
-  [9, 3],
-  [9, 4],
-  [9, 5],
-  [9, 6],
-  [10, 1],
-  [10, 2],
-  [10, 3],
-  [10, 4],
-  [10, 5],
-  [10, 6],
-
-  [12, 1],
-  [12, 2],
-  [12, 3],
-  [12, 4],
-  [12, 5],
-  [12, 6],
-  [13, 1],
-  [13, 2],
-  [13, 3],
-  [13, 4],
-  [13, 5],
-  [13, 6],
-  [14, 1],
-  [16, 1],
-  [15, 2],
-  [17, 1],
-  [17, 2],
-  [17, 3],
-  [17, 4],
-  [17, 5],
-  [17, 6],
-  [18, 1],
-  [18, 2],
-  [18, 3],
-  [18, 4],
-  [18, 5],
-  [18, 6],
-
-  [20, 1],
-  [20, 2],
-  [20, 3],
-  [20, 4],
-  [20, 5],
-  [20, 6],
-  [21, 1],
-  [21, 2],
-  [21, 3],
-  [21, 4],
-  [21, 5],
-  [21, 6],
-
-  [23, 1],
-  [23, 2],
-  [23, 3],
-  [23, 4],
-  [23, 5],
-  [23, 6],
-  [24, 1],
-  [24, 2],
-  [24, 3],
-  [24, 4],
-  [24, 5],
-  [24, 6],
-  [25, 1],
-  [25, 2],
-  [25, 3],
-  [26, 3],
-  [26, 4],
-  [27, 4],
-  [27, 5],
-  [27, 6],
-  [28, 1],
-  [28, 2],
-  [28, 3],
-  [28, 4],
-  [28, 5],
-  [28, 6],
-  [29, 1],
-  [29, 2],
-  [29, 3],
-  [29, 4],
-  [29, 5],
-  [29, 6],
-
-  [31, 6],
-  [31, 5],
-  [31, 4],
-  [31, 3],
-  [31, 2],
-  [31, 1],
-  [32, 1],
-  [32, 2],
-  [32, 3],
-  [32, 4],
-  [32, 5],
-  [32, 6],
-  [35, 6],
-  [35, 5],
-  [35, 4],
-  [35, 3],
-  [35, 2],
-  [35, 1],
-  [36, 1],
-  [36, 2],
-  [36, 3],
-  [32, 4],
-  [36, 5],
-  [36, 6],
-  [33, 1],
-  [34, 1],
-  [33, 4],
-  [34, 4],
-];
-
 const GitHubCalendar = ({
   data,
   useTheme = true,
@@ -282,26 +131,10 @@ const GitHubCalendar = ({
     return { weekStarts, monthLabelsForWeeks };
   }, [viewMode, today, currentYear]);
 
-  const { displayContributions, luminaPatternDates } = useMemo(() => {
-    const base = contributions.map((c) => ({ ...c, count: c.count }));
-    const patternDates = new Set<string>();
-    if (viewMode !== "trailing" || weekStarts.length === 0)
-      return { displayContributions: base, luminaPatternDates: patternDates };
-    const byDate = new Map<string, number>();
-    for (const c of base) byDate.set(format(c.date, "yyyy-MM-dd"), c.count);
-    for (const [wordCol, row] of LUMINA_PATTERN) {
-      const col = LUMINA_WORD_START_COL + wordCol;
-      if (col >= weekStarts.length) continue;
-      const date = addDays(weekStarts[col], row);
-      const key = format(date, "yyyy-MM-dd");
-      patternDates.add(key);
-      byDate.set(key, 4); // full level so LUMINA is always clearly visible
-    }
-    const displayContributions = Array.from(byDate.entries()).map(
-      ([dateStr, count]) => ({ date: new Date(dateStr), count }),
-    );
-    return { displayContributions, luminaPatternDates: patternDates };
-  }, [contributions, viewMode, weekStarts]);
+  const displayContributions = useMemo(
+    () => contributions.map((c) => ({ ...c, count: c.count })),
+    [contributions],
+  );
 
   const getLevel = (count: number) => {
     if (count === 0) return 0;
@@ -336,10 +169,7 @@ const GitHubCalendar = ({
               isSameDay(c.date, day),
             );
             const count = contribution?.count ?? 0;
-            const isLuminaCell = luminaPatternDates.has(
-              format(day, "yyyy-MM-dd"),
-            );
-            const level = isLuminaCell ? 4 : getLevel(count);
+            const level = getLevel(count);
 
             return (
               <div
@@ -347,20 +177,11 @@ const GitHubCalendar = ({
                 className={cn(
                   "aspect-square w-full min-w-[8px] min-h-[8px] max-w-[16px] rounded-[2px] transition-all duration-150 hover:ring-2 hover:ring-primary/30 hover:ring-offset-0 hover:scale-105 shrink-0",
                   useTheme ? THEME_LEVEL_CLASSES[level] : "",
-                  isLuminaCell && "ring-1 ring-primary/50 ring-inset",
                 )}
                 style={
-                  useTheme
-                    ? undefined
-                    : {
-                        backgroundColor: getColor(isLuminaCell ? 4 : count),
-                      }
+                  useTheme ? undefined : { backgroundColor: getColor(count) }
                 }
-                title={
-                  isLuminaCell
-                    ? "Lumina"
-                    : `${format(day, "PPP")}: ${count} contributions`
-                }
+                title={`${format(day, "PPP")}: ${count} ${count === 1 ? "entry" : "entries"}`}
               />
             );
           })}

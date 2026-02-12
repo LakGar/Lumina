@@ -26,6 +26,11 @@ const mockEntryFindFirst = jest.fn();
 const mockEntryCreate = jest.fn();
 const mockEntryUpdate = jest.fn();
 const mockEntryDelete = jest.fn();
+const mockEntryCount = jest.fn();
+const mockEntryFindUnique = jest.fn();
+const mockEntryMoodUpsert = jest.fn();
+const mockEntryTagUpsert = jest.fn();
+const mockEntryTagDeleteMany = jest.fn();
 
 jest.mock("@/app/generated/prisma/client", () => ({
   PrismaClient: jest.fn().mockImplementation(() => ({
@@ -35,9 +40,18 @@ jest.mock("@/app/generated/prisma/client", () => ({
     journalEntry: {
       findMany: (...args: unknown[]) => mockEntryFindMany(...args),
       findFirst: (...args: unknown[]) => mockEntryFindFirst(...args),
+      findUnique: (...args: unknown[]) => mockEntryFindUnique(...args),
       create: (...args: unknown[]) => mockEntryCreate(...args),
       update: (...args: unknown[]) => mockEntryUpdate(...args),
       delete: (...args: unknown[]) => mockEntryDelete(...args),
+      count: (...args: unknown[]) => mockEntryCount(...args),
+    },
+    entryMood: {
+      upsert: (...args: unknown[]) => mockEntryMoodUpsert(...args),
+    },
+    entryTag: {
+      upsert: (...args: unknown[]) => mockEntryTagUpsert(...args),
+      deleteMany: (...args: unknown[]) => mockEntryTagDeleteMany(...args),
     },
   })),
 }));
@@ -95,6 +109,7 @@ describe("GET /api/journals/[id]/entries", () => {
   it("returns 200 and list when journal owned", async () => {
     mockJournalFindFirst.mockResolvedValue({ id: 1, authorId: 1 });
     mockEntryFindMany.mockResolvedValue([]);
+    mockEntryCount.mockResolvedValue(0);
     const req = createRequest("http://localhost/api/journals/1/entries", "GET");
     await GET_LIST(req, { params: Promise.resolve({ id: "1" }) });
     const [, response] = mockFinishRequest.mock.calls[0];
@@ -119,6 +134,22 @@ describe("POST /api/journals/[id]/entries", () => {
     expect(mockEntryCreate).not.toHaveBeenCalled();
     const [, response] = mockFinishRequest.mock.calls[0];
     expect((response as NextResponse).status).toBe(404);
+  });
+
+  it("returns 201 when entry created (with optional mood/tags)", async () => {
+    mockJournalFindFirst.mockResolvedValue({ id: 1, authorId: 1 });
+    const created = { id: 1, journalId: 1, content: "Hi", source: "TEXT" };
+    mockEntryCreate.mockResolvedValue(created);
+    mockEntryFindUnique.mockResolvedValue(created);
+    const req = createRequest(
+      "http://localhost/api/journals/1/entries",
+      "POST",
+      { content: "Hi" },
+    );
+    await POST_ENTRY(req, { params: Promise.resolve({ id: "1" }) });
+    expect((mockFinishRequest.mock.calls[0][1] as NextResponse).status).toBe(
+      201,
+    );
   });
 });
 

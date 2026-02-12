@@ -28,6 +28,10 @@ model User {
   billing            Billing?
   journal            Journal[]
   mood               Mood[]
+  chatSessions        ChatSession[]
+  weeklyTips          WeeklyTip[]
+  promptCompletions   PromptCompletion[]
+  reminders          Reminder[]
 
   onboardingComplete Boolean   @default(false)
 
@@ -93,10 +97,11 @@ model Mood {
 }
 
 model Journal {
-  id      Int            @id @default(autoincrement())
-  title   String
-  entries JournalEntry[]
-  public  Boolean        @default(false)
+  id           Int            @id @default(autoincrement())
+  title        String
+  entries      JournalEntry[]
+  public       Boolean        @default(false)
+  chatSessions ChatSession[]
 
   author   User @relation(fields: [authorId], references: [id], onDelete: Cascade)
   authorId Int
@@ -164,9 +169,10 @@ model EntrySummary {
   entry   JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
   entryId Int          @unique
 
-  text      String   @db.Text
-  model     String?
-  createdAt DateTime @default(now())
+  text         String   @db.Text
+  model        String?
+  qualityScore Float?   // 0–100 entry quality from AI
+  createdAt    DateTime @default(now())
 }
 
 model EntryMood {
@@ -209,4 +215,82 @@ enum NotificationFrequency {
   DAILY
   WEEKLY
   ALTERNATE
+}
+
+// ——— Chat (journal-context) ———
+model ChatSession {
+  id        Int    @id @default(autoincrement())
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int
+  journal   Journal @relation(fields: [journalId], references: [id], onDelete: Cascade)
+  journalId Int
+
+  messages ChatMessage[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, journalId])
+}
+
+model ChatMessage {
+  id        Int         @id @default(autoincrement())
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId Int
+
+  role    String   // "user" | "assistant" | "system"
+  content String   @db.Text
+
+  createdAt DateTime @default(now())
+
+  @@index([sessionId])
+}
+
+// ——— Weekly tip (from chat/insights: title, short description, detailed content) ———
+model WeeklyTip {
+  id                Int       @id @default(autoincrement())
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            Int
+  title             String
+  shortDescription  String    @db.Text
+  detailedText      String    @db.Text
+  tipType           String?   // e.g. "missed_journal" | "quality_down" | "streak" | "general"
+  readAt            DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([userId, createdAt])
+}
+
+// ——— Calendar reminders (scheduled reminders) ———
+model Reminder {
+  id        Int      @id @default(autoincrement())
+  dateISO   String   // "YYYY-MM-DD"
+  time      String   // "HH:mm"
+  repeat    String   @default("none") // "none" | "daily" | "weekdays" | "weekly"
+  title     String
+  journalId Int?
+
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([authorId, dateISO])
+}
+
+// ——— Prompt completion (go deeper, reflection prompts — used for Lumina level) ———
+model PromptCompletion {
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int
+  source    String   // "go_deeper" | "weekly_prompt" | "reflection"
+  entryId   Int?     // optional link to entry
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([userId, createdAt])
 }

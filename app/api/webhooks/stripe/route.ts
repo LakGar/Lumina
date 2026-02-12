@@ -55,14 +55,45 @@ export async function POST(req: NextRequest) {
   try {
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
-      const userId = session.metadata?.luminaUserId;
+      const rawUserId = session.metadata?.luminaUserId;
+      let userId: number | null =
+        typeof rawUserId === "string"
+          ? parseInt(rawUserId, 10)
+          : typeof rawUserId === "number"
+            ? rawUserId
+            : null;
+      if (userId !== null && Number.isNaN(userId)) userId = null;
+
+      // Fallback: look up user by Stripe customer email so webhook works even if metadata was lost
+      if (!userId && session.customer) {
+        const stripe = getStripe();
+        const customerId =
+          typeof session.customer === "string"
+            ? session.customer
+            : session.customer?.id;
+        if (customerId) {
+          const customer = await stripe.customers.retrieve(customerId);
+          const email =
+            typeof customer !== "deleted" && customer.email
+              ? customer.email
+              : null;
+          if (email) {
+            const user = await prisma.user.findUnique({
+              where: { email },
+              select: { id: true },
+            });
+            if (user) userId = user.id;
+          }
+        }
+      }
+
       const subscriptionId =
         typeof session.subscription === "string"
           ? session.subscription
           : session.subscription?.id;
-      if (!userId || !subscriptionId) {
+      if (!subscriptionId) {
         const res = NextResponse.json(
-          { error: "Missing metadata or subscription" },
+          { error: "Missing subscription on session" },
           { status: 400 },
         );
         return finishRequest(req, res, {
@@ -71,12 +102,44 @@ export async function POST(req: NextRequest) {
           statusCode: 400,
         });
       }
+      if (!userId) {
+        const res = NextResponse.json(
+          {
+            error:
+              "Could not resolve user (missing metadata and customer email)",
+          },
+          { status: 400 },
+        );
+        return finishRequest(req, res, {
+          requestId,
+          start,
+          statusCode: 400,
+        });
+      }
+
       const stripe = getStripe();
       const sub = await stripe.subscriptions.retrieve(subscriptionId);
-      const periodEnd = "current_period_end" in sub ? Number(sub.current_period_end) * 1000 : null;
-      await prisma.billing.updateMany({
-        where: { userId: parseInt(userId, 10) },
-        data: {
+      const periodEnd =
+        "current_period_end" in sub
+          ? Number(sub.current_period_end) * 1000
+          : null;
+      const customerId =
+        typeof session.customer === "string"
+          ? session.customer
+          : (session.customer?.id ?? null);
+
+      await prisma.billing.upsert({
+        where: { userId },
+        create: {
+          userId,
+          stripeCustomerId: customerId,
+          stripeSubscriptionId: subscriptionId,
+          plan: "pro",
+          status: sub.status,
+          currentPeriodEnd: periodEnd ? new Date(periodEnd) : null,
+        },
+        update: {
+          stripeCustomerId: customerId ?? undefined,
           stripeSubscriptionId: subscriptionId,
           plan: "pro",
           status: sub.status,
@@ -88,27 +151,41 @@ export async function POST(req: NextRequest) {
       event.type === "customer.subscription.updated"
     ) {
       const sub = event.data.object as Stripe.Subscription;
-      const periodEnd = "current_period_end" in sub ? Number(sub.current_period_end) * 1000 : null;
-      await prisma.billing.updateMany({
-        where: { stripeCustomerId: sub.customer as string },
-        data: {
-          stripeSubscriptionId: sub.id,
-          plan: sub.status === "active" ? "pro" : null,
-          status: sub.status,
-          currentPeriodEnd: periodEnd ? new Date(periodEnd) : null,
-        },
-      });
+      const customerId =
+        typeof sub.customer === "string" ? sub.customer : sub.customer?.id;
+      if (customerId) {
+        const periodEnd =
+          "current_period_end" in sub
+            ? Number(sub.current_period_end) * 1000
+            : null;
+        await prisma.billing.updateMany({
+          where: { stripeCustomerId: customerId },
+          data: {
+            stripeSubscriptionId: sub.id,
+            plan:
+              sub.status === "active" || sub.status === "trialing"
+                ? "pro"
+                : null,
+            status: sub.status,
+            currentPeriodEnd: periodEnd ? new Date(periodEnd) : null,
+          },
+        });
+      }
     } else if (event.type === "customer.subscription.deleted") {
       const sub = event.data.object as Stripe.Subscription;
-      await prisma.billing.updateMany({
-        where: { stripeCustomerId: sub.customer as string },
-        data: {
-          stripeSubscriptionId: null,
-          plan: null,
-          status: "canceled",
-          currentPeriodEnd: null,
-        },
-      });
+      const customerId =
+        typeof sub.customer === "string" ? sub.customer : sub.customer?.id;
+      if (customerId) {
+        await prisma.billing.updateMany({
+          where: { stripeCustomerId: customerId },
+          data: {
+            stripeSubscriptionId: null,
+            plan: null,
+            status: "canceled",
+            currentPeriodEnd: null,
+          },
+        });
+      }
     }
     // Optional later: invoice.payment_failed, invoice.paid — to keep status/plan reliable (dunning, renewals)
     const res = NextResponse.json({ received: true });

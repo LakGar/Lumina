@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CircleCheck,
@@ -54,10 +55,52 @@ const MOOD_OPTIONS = [
 ] as const;
 
 const OnboardPage = () => {
+  const router = useRouter();
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState(0);
   const [displayName, setDisplayName] = useState("");
   const [journalName, setJournalName] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const handleFinish = async (data: {
+    displayName: string;
+    journalName: string;
+    firstEntryContent: string;
+    goal: string;
+    topics: string;
+    reason: string;
+    dailyReminderTime: string | null;
+    dailyReminderEnabled: boolean;
+  }) => {
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const res = await fetch("/api/onboard/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          displayName: data.displayName || undefined,
+          journalName: data.journalName || undefined,
+          firstEntryContent: data.firstEntryContent,
+          goal: data.goal || undefined,
+          topics: data.topics || undefined,
+          reason: data.reason || undefined,
+          dailyReminderTime: data.dailyReminderTime ?? undefined,
+          dailyReminderEnabled: data.dailyReminderEnabled,
+        }),
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json?.error ?? "Failed to complete onboarding");
+      }
+      router.push("/dashboard");
+    } catch (e) {
+      setSubmitError(e instanceof Error ? e.message : "Something went wrong");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const goNext = () => {
     setDirection(1);
@@ -248,8 +291,10 @@ const OnboardPage = () => {
                   direction={direction}
                   displayName={displayName}
                   journalName={journalName}
-                  onNext={goNext}
                   onPrev={goPrev}
+                  onFinish={handleFinish}
+                  submitting={submitting}
+                  submitError={submitError}
                 />
               )}
             </AnimatePresence>
@@ -513,18 +558,43 @@ function InlineEditable({
   );
 }
 
+function to24h(hour: number, minute: number, period: "AM" | "PM"): string {
+  let h = hour;
+  if (period === "AM") {
+    if (h === 12) h = 0;
+  } else {
+    if (h !== 12) h += 12;
+  }
+  const hh = String(h).padStart(2, "0");
+  const mm = String(minute).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
 function StepFirstEntry({
   direction,
   displayName,
   journalName,
-  onNext,
   onPrev,
+  onFinish,
+  submitting,
+  submitError,
 }: {
   direction: number;
   displayName: string;
   journalName: string;
-  onNext: () => void;
   onPrev: () => void;
+  onFinish: (data: {
+    displayName: string;
+    journalName: string;
+    firstEntryContent: string;
+    goal: string;
+    topics: string;
+    reason: string;
+    dailyReminderTime: string | null;
+    dailyReminderEnabled: boolean;
+  }) => void;
+  submitting: boolean;
+  submitError: string | null;
 }) {
   const [journalAbout, setJournalAbout] = useState("");
   const [lastWroteAbout, setLastWroteAbout] = useState("");
@@ -638,19 +708,56 @@ function StepFirstEntry({
           </p>
         </div>
 
+        {submitError && (
+          <p className="text-sm text-red-600" role="alert">
+            {submitError}
+          </p>
+        )}
         <div className="mt-auto flex flex-wrap items-center gap-3 pt-2">
           <button
+            type="button"
             onClick={onPrev}
-            className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-5 py-2.5 text-sm font-medium text-neutral-700 transition-colors duration-200 hover:border-neutral-300 hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-neutral-300 focus:ring-offset-2"
+            disabled={submitting}
+            className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-5 py-2.5 text-sm font-medium text-neutral-700 transition-colors duration-200 hover:border-neutral-300 hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-neutral-300 focus:ring-offset-2 disabled:opacity-50"
           >
             <ChevronLeft className="h-4 w-4" />
             Back
           </button>
           <button
-            onClick={onNext}
-            className="inline-flex items-center gap-2 rounded-full bg-neutral-900 px-6 py-2.5 text-sm font-medium text-white transition-colors duration-300 hover:bg-neutral-800/50 focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-offset-2"
+            type="button"
+            disabled={submitting}
+            onClick={() => {
+              const firstEntryContent = [
+                `Hi, my name is ${displayName || "..."}. This is my first journal on Lumina`,
+                journalName ? ` — I'm calling it "${journalName}".` : ".",
+                ` I like to journal about ${journalAbout || "..."} and the last thing I wrote about was ${lastWroteAbout || "..."}.`,
+                ` Right now I'm feeling ${mood || "..."} and my journaling goal is ${goal || "..."}.`,
+                ` I like to journal at ${preferredHour}:${preferredMinute} ${preferredPeriod}.`,
+                ` What brings me to Lumina: ${whatBringsYou || "..."}`,
+              ].join("");
+              const hour = Math.min(
+                12,
+                Math.max(1, parseInt(preferredHour, 10) || 9),
+              );
+              const minute = Math.min(
+                59,
+                Math.max(0, parseInt(preferredMinute, 10) || 0),
+              );
+              const dailyReminderTime = to24h(hour, minute, preferredPeriod);
+              onFinish({
+                displayName,
+                journalName: journalName || "My Journal",
+                firstEntryContent,
+                goal,
+                topics: journalAbout,
+                reason: whatBringsYou,
+                dailyReminderTime,
+                dailyReminderEnabled: true,
+              });
+            }}
+            className="inline-flex items-center gap-2 rounded-full bg-neutral-900 px-6 py-2.5 text-sm font-medium text-white transition-colors duration-300 hover:bg-neutral-800/50 focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-offset-2 disabled:opacity-50"
           >
-            Finish
+            {submitting ? "Saving…" : "Finish"}
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>

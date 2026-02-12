@@ -25,7 +25,7 @@ export function withCorsHeaders(
   }
   response.headers.set(
     "Access-Control-Allow-Methods",
-    "GET, POST, PATCH, DELETE, OPTIONS",
+    "GET, POST, PATCH, PUT, DELETE, OPTIONS",
   );
   response.headers.set(
     "Access-Control-Allow-Headers",
@@ -40,7 +40,7 @@ export function corsPreflight(): NextResponse {
   res.headers.set("Access-Control-Allow-Origin", "*");
   res.headers.set(
     "Access-Control-Allow-Methods",
-    "GET, POST, PATCH, DELETE, OPTIONS",
+    "GET, POST, PATCH, PUT, DELETE, OPTIONS",
   );
   res.headers.set(
     "Access-Control-Allow-Headers",

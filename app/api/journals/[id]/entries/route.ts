@@ -4,6 +4,7 @@ import { requireAuth } from "@/app/api/_lib/auth";
 import { finishRequest, getRequestId } from "@/app/api/_lib/logger";
 import { corsPreflight } from "@/app/api/_lib/cors";
 import { EntrySource } from "@/app/generated/prisma/enums";
+import { TagSource } from "@/app/generated/prisma/enums";
 
 const prisma = new PrismaClient();
 
@@ -64,16 +65,35 @@ export async function GET(
     });
   }
   try {
-    const entries = await prisma.journalEntry.findMany({
-      where: { journalId: journal.id },
-      orderBy: { createdAt: "desc" },
-      include: {
-        summary: true,
-        mood: true,
-        tags: true,
-      },
-    });
-    const res = NextResponse.json({ data: entries });
+    const url = req.nextUrl;
+    const sort = url.searchParams.get("sort") ?? "newest";
+    const limit = Math.min(
+      Math.max(1, Number(url.searchParams.get("limit")) || 50),
+      100,
+    );
+    const offset = Math.max(0, Number(url.searchParams.get("offset")) || 0);
+    const orderBy =
+      sort === "oldest"
+        ? { createdAt: "asc" as const }
+        : sort === "lastEdited"
+          ? { updatedAt: "desc" as const }
+          : { createdAt: "desc" as const };
+
+    const [entries, total] = await Promise.all([
+      prisma.journalEntry.findMany({
+        where: { journalId: journal.id },
+        orderBy,
+        take: limit,
+        skip: offset,
+        include: {
+          summary: true,
+          mood: true,
+          tags: true,
+        },
+      }),
+      prisma.journalEntry.count({ where: { journalId: journal.id } }),
+    ]);
+    const res = NextResponse.json({ data: entries, total });
     return finishRequest(req, res, {
       requestId,
       userId: auth.userId,
@@ -160,6 +180,14 @@ export async function POST(
       body?.source && Object.values(EntrySource).includes(body.source)
         ? body.source
         : EntrySource.TEXT;
+    const moodLabel = typeof body?.mood === "string" ? body.mood.trim() : null;
+    const tagsRaw = Array.isArray(body?.tags)
+      ? body.tags
+          .filter((t: unknown) => typeof t === "string")
+          .map((t: string) => t.trim())
+          .filter(Boolean)
+      : ([] as string[]);
+
     const entry = await prisma.journalEntry.create({
       data: {
         journalId: journal.id,
@@ -172,7 +200,30 @@ export async function POST(
         tags: true,
       },
     });
-    const res = NextResponse.json({ data: entry }, { status: 201 });
+
+    if (moodLabel) {
+      await prisma.entryMood.upsert({
+        where: { entryId: entry.id },
+        create: { entryId: entry.id, label: moodLabel },
+        update: { label: moodLabel },
+      });
+    }
+    for (const tag of tagsRaw) {
+      await prisma.entryTag.upsert({
+        where: { entryId_tag: { entryId: entry.id, tag } },
+        create: { entryId: entry.id, tag, source: TagSource.USER },
+        update: {},
+      });
+    }
+
+    const refreshed = await prisma.journalEntry.findUnique({
+      where: { id: entry.id },
+      include: { summary: true, mood: true, tags: true },
+    });
+    const res = NextResponse.json(
+      { data: refreshed ?? entry },
+      { status: 201 },
+    );
     return finishRequest(req, res, {
       requestId,
       userId: auth.userId,

@@ -4,6 +4,7 @@ import { requireAuth } from "@/app/api/_lib/auth";
 import { finishRequest, getRequestId } from "@/app/api/_lib/logger";
 import { corsPreflight } from "@/app/api/_lib/cors";
 import { EntrySource } from "@/app/generated/prisma/enums";
+import { TagSource } from "@/app/generated/prisma/enums";
 
 const prisma = new PrismaClient();
 
@@ -119,9 +120,40 @@ export async function PATCH(
     if (body?.source && Object.values(EntrySource).includes(body.source)) {
       updates.source = body.source;
     }
-    const updated = await prisma.journalEntry.update({
+    await prisma.journalEntry.update({
       where: { id: entry.id },
       data: updates,
+    });
+
+    if (typeof body?.mood === "string") {
+      const label = body.mood.trim();
+      if (label) {
+        await prisma.entryMood.upsert({
+          where: { entryId: entry.id },
+          create: { entryId: entry.id, label },
+          update: { label },
+        });
+      }
+    }
+    if (Array.isArray(body?.tags)) {
+      await prisma.entryTag.deleteMany({
+        where: { entryId: entry.id, source: TagSource.USER },
+      });
+      const tagsRaw = body.tags
+        .filter((t: unknown) => typeof t === "string")
+        .map((t: string) => String(t).trim())
+        .filter(Boolean);
+      for (const tag of tagsRaw) {
+        await prisma.entryTag.upsert({
+          where: { entryId_tag: { entryId: entry.id, tag } },
+          create: { entryId: entry.id, tag, source: TagSource.USER },
+          update: {},
+        });
+      }
+    }
+
+    const updated = await prisma.journalEntry.findUnique({
+      where: { id: entry.id },
       include: {
         summary: true,
         mood: true,

@@ -245,7 +245,11 @@ function buildColumnsWithDelete(
         cell: ({ row }: { row: Row<z.infer<typeof schema>> }) => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="data-[state=open]:bg-muted text-muted-foreground flex size-8" size="icon">
+              <Button
+                variant="ghost"
+                className="data-[state=open]:bg-muted text-muted-foreground flex size-8"
+                size="icon"
+              >
                 <IconDotsVertical />
                 <span className="sr-only">Open menu</span>
               </Button>
@@ -255,7 +259,10 @@ function buildColumnsWithDelete(
                 <Link href={`/entries/${row.original.id}`}>Edit</Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive" onClick={() => onDelete(row.original.id)}>
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={() => onDelete(row.original.id)}
+              >
                 Delete
               </DropdownMenuItem>
             </DropdownMenuContent>

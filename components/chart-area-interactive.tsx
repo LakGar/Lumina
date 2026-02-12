@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { format, subDays } from "date-fns";
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
 
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -29,100 +30,6 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 export const description = "An interactive area chart";
 
-const chartData = [
-  { date: "2024-04-01", entries: 2 },
-  { date: "2024-04-02", entries: 1 },
-  { date: "2024-04-03", entries: 3 },
-  { date: "2024-04-04", entries: 2 },
-  { date: "2024-04-05", entries: 1 },
-  { date: "2024-04-06", entries: 4 },
-  { date: "2024-04-07", entries: 2 },
-  { date: "2024-04-08", entries: 3 },
-  { date: "2024-04-09", entries: 1 },
-  { date: "2024-04-10", entries: 2 },
-  { date: "2024-04-11", entries: 3 },
-  { date: "2024-04-12", entries: 2 },
-  { date: "2024-04-13", entries: 1 },
-  { date: "2024-04-14", entries: 2 },
-  { date: "2024-04-15", entries: 4 },
-  { date: "2024-04-16", entries: 1 },
-  { date: "2024-04-17", entries: 3 },
-  { date: "2024-04-18", entries: 2 },
-  { date: "2024-04-19", entries: 1 },
-  { date: "2024-04-20", entries: 2 },
-  { date: "2024-04-21", entries: 3 },
-  { date: "2024-04-22", entries: 2 },
-  { date: "2024-04-23", entries: 1 },
-  { date: "2024-04-24", entries: 2 },
-  { date: "2024-04-25", entries: 4 },
-  { date: "2024-04-26", entries: 1 },
-  { date: "2024-04-27", entries: 2 },
-  { date: "2024-04-28", entries: 3 },
-  { date: "2024-04-29", entries: 1 },
-  { date: "2024-04-30", entries: 2 },
-  { date: "2024-05-01", entries: 3 },
-  { date: "2024-05-02", entries: 2 },
-  { date: "2024-05-03", entries: 1 },
-  { date: "2024-05-04", entries: 2 },
-  { date: "2024-05-05", entries: 3 },
-  { date: "2024-05-06", entries: 2 },
-  { date: "2024-05-07", entries: 1 },
-  { date: "2024-05-08", entries: 4 },
-  { date: "2024-05-09", entries: 2 },
-  { date: "2024-05-10", entries: 1 },
-  { date: "2024-05-11", entries: 3 },
-  { date: "2024-05-12", entries: 2 },
-  { date: "2024-05-13", entries: 1 },
-  { date: "2024-05-14", entries: 2 },
-  { date: "2024-05-15", entries: 3 },
-  { date: "2024-05-16", entries: 2 },
-  { date: "2024-05-17", entries: 1 },
-  { date: "2024-05-18", entries: 2 },
-  { date: "2024-05-19", entries: 4 },
-  { date: "2024-05-20", entries: 1 },
-  { date: "2024-05-21", entries: 2 },
-  { date: "2024-05-22", entries: 3 },
-  { date: "2024-05-23", entries: 2 },
-  { date: "2024-05-24", entries: 1 },
-  { date: "2024-05-25", entries: 2 },
-  { date: "2024-05-26", entries: 3 },
-  { date: "2024-05-27", entries: 2 },
-  { date: "2024-05-28", entries: 1 },
-  { date: "2024-05-29", entries: 2 },
-  { date: "2024-05-30", entries: 4 },
-  { date: "2024-05-31", entries: 1 },
-  { date: "2024-06-01", entries: 2 },
-  { date: "2024-06-02", entries: 3 },
-  { date: "2024-06-03", entries: 2 },
-  { date: "2024-06-04", entries: 1 },
-  { date: "2024-06-05", entries: 2 },
-  { date: "2024-06-06", entries: 3 },
-  { date: "2024-06-07", entries: 2 },
-  { date: "2024-06-08", entries: 1 },
-  { date: "2024-06-09", entries: 2 },
-  { date: "2024-06-10", entries: 4 },
-  { date: "2024-06-11", entries: 1 },
-  { date: "2024-06-12", entries: 2 },
-  { date: "2024-06-13", entries: 3 },
-  { date: "2024-06-14", entries: 2 },
-  { date: "2024-06-15", entries: 1 },
-  { date: "2024-06-16", entries: 2 },
-  { date: "2024-06-17", entries: 3 },
-  { date: "2024-06-18", entries: 2 },
-  { date: "2024-06-19", entries: 1 },
-  { date: "2024-06-20", entries: 2 },
-  { date: "2024-06-21", entries: 4 },
-  { date: "2024-06-22", entries: 1 },
-  { date: "2024-06-23", entries: 2 },
-  { date: "2024-06-24", entries: 3 },
-  { date: "2024-06-25", entries: 2 },
-  { date: "2024-06-26", entries: 1 },
-  { date: "2024-06-27", entries: 2 },
-  { date: "2024-06-28", entries: 3 },
-  { date: "2024-06-29", entries: 2 },
-  { date: "2024-06-30", entries: 1 },
-];
-
 const chartConfig = {
   entries: {
     label: "Entries",
@@ -130,7 +37,28 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-export function ChartAreaInteractive() {
+function buildChartDataFromEntries(
+  entries: Array<{ createdAt: string }>,
+): Array<{ date: string; entries: number }> {
+  const byDate = new Map<string, number>();
+  for (const e of entries) {
+    const d = format(new Date(e.createdAt), "yyyy-MM-dd");
+    byDate.set(d, (byDate.get(d) ?? 0) + 1);
+  }
+  const today = format(new Date(), "yyyy-MM-dd");
+  const out: Array<{ date: string; entries: number }> = [];
+  for (let i = 89; i >= 0; i--) {
+    const date = format(subDays(new Date(), i), "yyyy-MM-dd");
+    out.push({ date, entries: byDate.get(date) ?? 0 });
+  }
+  return out;
+}
+
+export function ChartAreaInteractive({
+  entries = [],
+}: {
+  entries?: Array<{ createdAt: string }>;
+}) {
   const isMobile = useIsMobile();
   const [timeRange, setTimeRange] = React.useState("90d");
 
@@ -140,19 +68,13 @@ export function ChartAreaInteractive() {
     }
   }, [isMobile]);
 
-  const filteredData = chartData.filter((item) => {
-    const date = new Date(item.date);
-    const referenceDate = new Date("2024-06-30");
-    let daysToSubtract = 90;
-    if (timeRange === "30d") {
-      daysToSubtract = 30;
-    } else if (timeRange === "7d") {
-      daysToSubtract = 7;
-    }
-    const startDate = new Date(referenceDate);
-    startDate.setDate(startDate.getDate() - daysToSubtract);
-    return date >= startDate;
-  });
+  const chartData = React.useMemo(
+    () => buildChartDataFromEntries(entries),
+    [entries],
+  );
+
+  const daysToSubtract = timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : 90;
+  const filteredData = chartData.slice(-daysToSubtract);
 
   return (
     <Card className="@container/card">

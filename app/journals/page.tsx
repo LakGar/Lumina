@@ -12,36 +12,23 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { IconBook2, IconPlus } from "@tabler/icons-react";
+import { IconBook2, IconPlus, IconFileText } from "@tabler/icons-react";
 import Link from "next/link";
 import { useState } from "react";
-import { z } from "zod";
 import { toast } from "sonner";
-
-const createJournalSchema = z.object({ title: z.string().min(1).max(200) });
+import { NewJournalModal } from "@/components/new-journal-modal";
 
 export default function JournalsPage() {
   const queryClient = useQueryClient();
   const { data, isLoading, isError, error } = useJournals();
-  const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
+
   const createMutation = useMutation({
     mutationFn: (t: string) => apiClient.journals.create(t),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["journals"] });
-      setTitle("");
-      setOpen(false);
+      setModalOpen(false);
       toast.success("Journal created");
     },
     onError: (err: Error & { status?: number }) => {
@@ -49,21 +36,14 @@ export default function JournalsPage() {
     },
   });
 
-  const handleCreate = () => {
-    const parsed = createJournalSchema.safeParse({ title: title.trim() });
-    if (!parsed.success) {
-      toast.error("Enter a title (1–200 characters)");
-      return;
-    }
-    createMutation.mutate(parsed.data.title);
-  };
-
   if (isError) {
     return (
       <SidebarInset>
         <SiteHeader />
         <div className="p-6">
-          <p className="text-destructive">{error?.message ?? "Failed to load journals."}</p>
+          <p className="text-destructive">
+            {error?.message ?? "Failed to load journals."}
+          </p>
         </div>
       </SidebarInset>
     );
@@ -71,79 +51,80 @@ export default function JournalsPage() {
 
   return (
     <SidebarInset>
+      <NewJournalModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        onSubmit={(title) => createMutation.mutate(title)}
+        isPending={createMutation.isPending}
+      />
       <SiteHeader />
-      <div className="flex flex-1 flex-col gap-6 p-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Journals</h1>
-          <Sheet open={open} onOpenChange={setOpen}>
-            <SheetTrigger asChild>
-              <Button>
-                <IconPlus className="size-4" />
-                New journal
-              </Button>
-            </SheetTrigger>
-            <SheetContent>
-              <SheetHeader>
-                <SheetTitle>New journal</SheetTitle>
-                <SheetDescription>
-                  Give your journal a name. You can change it later.
-                </SheetDescription>
-              </SheetHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="journal-title">Title</Label>
-                  <Input
-                    id="journal-title"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="e.g. Morning pages"
-                  />
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setOpen(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleCreate}
-                  disabled={createMutation.isPending}
-                >
-                  Create
-                </Button>
-              </div>
-            </SheetContent>
-          </Sheet>
+      <div className="flex flex-1 flex-col gap-8 p-6 md:p-8">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-semibold tracking-tight">Journals</h1>
+          <p className="text-muted-foreground text-sm">
+            Your writing spaces. Open one to view or add entries.
+          </p>
+        </div>
+        <div className="flex justify-end">
+          <Button onClick={() => setModalOpen(true)} className="rounded-lg">
+            <IconPlus className="size-4" />
+            New journal
+          </Button>
         </div>
         {isLoading ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-28 rounded-lg" />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <Skeleton key={i} className="h-36 rounded-xl" />
             ))}
           </div>
         ) : !data?.data?.length ? (
-          <Card>
-            <CardHeader>
-              <CardTitle>No journals yet</CardTitle>
-              <CardDescription>
-                Create a journal to start writing entries.
+          <Card className="rounded-xl border-dashed">
+            <CardHeader className="text-center py-12">
+              <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-muted">
+                <IconBook2 className="size-7 text-muted-foreground" />
+              </div>
+              <CardTitle className="text-xl">No journals yet</CardTitle>
+              <CardDescription className="max-w-sm mx-auto">
+                Create a journal to start writing entries and track your
+                thoughts.
               </CardDescription>
+              <Button
+                className="mt-6 w-fit mx-auto rounded-lg"
+                onClick={() => setModalOpen(true)}
+              >
+                <IconPlus className="size-4" />
+                Create your first journal
+              </Button>
             </CardHeader>
           </Card>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {data.data.map((j) => (
-              <Link key={j.id} href={`/journals/${j.id}`}>
-                <Card className="transition-colors hover:bg-muted/50">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                    <IconBook2 className="size-5 text-muted-foreground" />
-                    <span className="text-muted-foreground text-sm">
-                      {j._count?.entries ?? 0} entries
-                    </span>
+              <Link key={j.id} href={`/journals/${j.id}`} className="group">
+                <Card className="h-full rounded-xl border transition-all duration-200 hover:border-primary/30 hover:shadow-md group-hover:bg-muted/30">
+                  <CardHeader className="flex flex-col gap-3 pb-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <IconBook2 className="size-5" />
+                      </div>
+                      <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+                        {j._count?.entries ?? 0}{" "}
+                        {j._count?.entries === 1 ? "entry" : "entries"}
+                      </span>
+                    </div>
+                    <CardTitle className="text-lg font-semibold leading-tight line-clamp-2">
+                      {j.title}
+                    </CardTitle>
+                    <CardDescription className="flex items-center gap-1.5 text-xs">
+                      <IconFileText className="size-3.5" />
+                      Created{" "}
+                      {new Date(j.createdAt).toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </CardDescription>
                   </CardHeader>
-                  <CardTitle className="text-lg">{j.title}</CardTitle>
-                  <CardDescription>
-                    Created {new Date(j.createdAt).toLocaleDateString()}
-                  </CardDescription>
                 </Card>
               </Link>
             ))}

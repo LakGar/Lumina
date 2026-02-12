@@ -1,10 +1,13 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChartAreaInteractive } from "@/components/chart-area-interactive";
 import { DataTable } from "@/components/data-table";
-import { NewEntrySheet } from "@/components/new-entry-sheet";
 import { SectionCards } from "@/components/section-cards";
+import { LuminaLevelCard } from "@/components/lumina-level-card";
+import { WeeklyTipCard } from "@/components/weekly-tip-card";
+import { AddMoodModal } from "@/components/add-mood-modal";
 import { SiteHeader } from "@/components/site-header";
 import {
   GitHubCalendar,
@@ -20,13 +23,23 @@ import { toast } from "sonner";
 
 export function DashboardContent() {
   const queryClient = useQueryClient();
-  const {
-    tableRows,
-    contributionData,
-    stats,
-    journals,
-    entries,
-  } = useDashboardData();
+  const [moodModalOpen, setMoodModalOpen] = useState(false);
+  const { tableRows, contributionData, stats, journals, entries } =
+    useDashboardData();
+  const { data: backendStats, isLoading: statsLoading } = useQuery({
+    queryKey: ["me", "stats"],
+    queryFn: () => apiClient.me.stats(),
+  });
+
+  const moodMutation = useMutation({
+    mutationFn: ({ title, note }: { title: string; note: string }) =>
+      apiClient.moods.create(title, note || null),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["moods"] });
+      toast.success("Mood logged");
+    },
+    onError: (err: Error) => toast.error(err.message ?? "Failed to log mood"),
+  });
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => apiClient.entries.delete(id),
@@ -47,7 +60,9 @@ export function DashboardContent() {
         <SiteHeader />
         <div className="flex flex-1 flex-col p-6">
           <p className="text-destructive">
-            {journals.error?.message ?? entries.error?.message ?? "Failed to load dashboard."}
+            {journals.error?.message ??
+              entries.error?.message ??
+              "Failed to load dashboard."}
           </p>
         </div>
       </SidebarInset>
@@ -56,11 +71,23 @@ export function DashboardContent() {
 
   return (
     <SidebarInset>
-      <NewEntrySheet />
+      <AddMoodModal
+        open={moodModalOpen}
+        onOpenChange={setMoodModalOpen}
+        onSubmit={(title, note) => moodMutation.mutate({ title, note })}
+        isPending={moodMutation.isPending}
+      />
       <SiteHeader />
       <div className="flex flex-1 flex-col">
         <div className="@container/main flex flex-1 flex-col gap-2">
           <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+            <div className="grid grid-cols-1 gap-4 px-4 lg:px-6 @xl/main:grid-cols-2">
+              <LuminaLevelCard
+                stats={backendStats?.data}
+                isLoading={statsLoading}
+              />
+              <WeeklyTipCard />
+            </div>
             {isLoading ? (
               <div className="grid grid-cols-1 gap-4 px-4 lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
                 {[1, 2, 3, 4].map((i) => (
@@ -68,7 +95,10 @@ export function DashboardContent() {
                 ))}
               </div>
             ) : (
-              <SectionCards stats={stats} />
+              <SectionCards
+                stats={stats}
+                onAddMood={() => setMoodModalOpen(true)}
+              />
             )}
             <div className="flex flex-1 flex-col gap-6 px-4 lg:px-6 min-h-0">
               <div className="flex flex-1 flex-col min-h-[280px] min-w-0">
@@ -95,7 +125,7 @@ export function DashboardContent() {
                 </div>
               </div>
               <div>
-                <ChartAreaInteractive />
+                <ChartAreaInteractive entries={entries.data?.data ?? []} />
               </div>
             </div>
             <div className="space-y-2">
@@ -109,11 +139,17 @@ export function DashboardContent() {
               ) : tableRows.length === 0 ? (
                 <div className="px-4 lg:px-6">
                   <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12 text-center">
-                    <p className="text-muted-foreground text-sm">No entries yet.</p>
-                    <p className="text-muted-foreground mt-1 text-sm">Create a journal and add your first entry.</p>
+                    <p className="text-muted-foreground text-sm">
+                      No entries yet.
+                    </p>
+                    <p className="text-muted-foreground mt-1 text-sm">
+                      Create a journal and add your first entry.
+                    </p>
                     <Button
                       className="mt-4"
-                      onClick={() => useUIStore.getState().setNewEntryOpen(true)}
+                      onClick={() =>
+                        useUIStore.getState().setNewEntryOpen(true)
+                      }
                     >
                       New entry
                     </Button>
@@ -123,7 +159,9 @@ export function DashboardContent() {
                 <DataTable
                   data={tableRows}
                   onDelete={(id) => deleteMutation.mutate(id)}
-                  onNewEntryClick={() => useUIStore.getState().setNewEntryOpen(true)}
+                  onNewEntryClick={() =>
+                    useUIStore.getState().setNewEntryOpen(true)
+                  }
                 />
               )}
             </div>

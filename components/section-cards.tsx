@@ -24,7 +24,13 @@ export type SectionCardsStats = {
   topMood: string;
 };
 
-export function SectionCards({ stats }: { stats?: SectionCardsStats | null }) {
+export function SectionCards({
+  stats,
+  onAddMood,
+}: {
+  stats?: SectionCardsStats | null;
+  onAddMood?: () => void;
+}) {
   const diff = stats ? stats.entriesThisWeek - stats.lastWeekCount : 0;
   const diffLabel = diff > 0 ? `+${diff}` : diff < 0 ? String(diff) : "0";
   return (
@@ -109,10 +115,20 @@ export function SectionCards({ stats }: { stats?: SectionCardsStats | null }) {
             {stats?.topMood ?? "—"}
           </CardTitle>
           <CardAction>
-            <Badge variant="outline">
-              <IconMoodHappy className="size-3.5" />
-              Balanced
-            </Badge>
+            {onAddMood ? (
+              <button
+                type="button"
+                onClick={onAddMood}
+                className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium hover:bg-muted transition-colors"
+              >
+                Add mood
+              </button>
+            ) : (
+              <Badge variant="outline">
+                <IconMoodHappy className="size-3.5" />
+                Balanced
+              </Badge>
+            )}
           </CardAction>
         </CardHeader>
         <CardFooter className="flex-col items-start gap-1.5 text-sm">

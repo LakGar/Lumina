@@ -13,27 +13,26 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
-// Mock journals for frontend – replace with API later
-const MOCK_JOURNALS = [
-  { id: "today", title: "Today" },
-  { id: "work", title: "Work" },
-  { id: "personal", title: "Personal" },
-  { id: "gratitude", title: "Gratitude" },
-  { id: "ideas", title: "Ideas" },
-];
+export type QuickCreateJournal = { id: number; title: string };
 
 const QuickCreateModal = ({
   open,
   onOpenChange,
   onSend,
+  journals = [],
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSend?: (message: string, files?: File[]) => void;
+  onSend?: (journalId: number, content: string) => void;
+  journals?: QuickCreateJournal[];
 }) => {
+  const firstId = journals[0]?.id;
   const [selectedJournalId, setSelectedJournalId] = React.useState(
-    MOCK_JOURNALS[0]?.id ?? "",
+    firstId != null ? String(firstId) : "",
   );
+  React.useEffect(() => {
+    if (open && journals.length) setSelectedJournalId(String(journals[0].id));
+  }, [open, journals]);
 
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
@@ -85,18 +84,27 @@ const QuickCreateModal = ({
                       align="start"
                       className="min-w-[var(--radix-select-trigger-width)]"
                     >
-                      {MOCK_JOURNALS.map((journal) => (
-                        <SelectItem key={journal.id} value={journal.id}>
-                          {journal.title}
-                        </SelectItem>
-                      ))}
+                      {journals.length === 0 ? (
+                        <div className="py-2 px-2 text-sm text-muted-foreground">
+                          No journals yet
+                        </div>
+                      ) : (
+                        journals.map((j) => (
+                          <SelectItem key={j.id} value={String(j.id)}>
+                            {j.title}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
               }
-              onSend={(message, files) => {
-                onSend?.(message, files);
-                onOpenChange(false);
+              onSend={(message) => {
+                const id = selectedJournalId ? Number(selectedJournalId) : NaN;
+                if (!Number.isNaN(id) && message.trim()) {
+                  onSend?.(id, message.trim());
+                  onOpenChange(false);
+                }
               }}
             />
           </div>

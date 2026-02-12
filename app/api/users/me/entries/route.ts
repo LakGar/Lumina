@@ -22,7 +22,12 @@ export async function GET(req: NextRequest) {
       statusCode: auth.response.status,
     });
   }
-  const limit = Math.min(Number(req.nextUrl.searchParams.get("limit")) || 50, 100);
+  const limit = Math.min(
+    Number(req.nextUrl.searchParams.get("limit")) || 50,
+    300,
+  );
+  const fromParam = req.nextUrl.searchParams.get("from"); // YYYY-MM-DD
+  const toParam = req.nextUrl.searchParams.get("to"); // YYYY-MM-DD
   const rate = checkRateLimit(String(auth.user.id));
   if (!rate.ok) {
     const res = NextResponse.json(
@@ -37,8 +42,22 @@ export async function GET(req: NextRequest) {
     });
   }
   try {
+    const where: {
+      journal: { authorId: number };
+      createdAt?: { gte?: Date; lte?: Date };
+    } = {
+      journal: { authorId: auth.user.id },
+    };
+    if (fromParam && /^\d{4}-\d{2}-\d{2}$/.test(fromParam)) {
+      const from = new Date(fromParam + "T00:00:00.000Z");
+      where.createdAt = { ...where.createdAt, gte: from };
+    }
+    if (toParam && /^\d{4}-\d{2}-\d{2}$/.test(toParam)) {
+      const to = new Date(toParam + "T23:59:59.999Z");
+      where.createdAt = { ...where.createdAt, lte: to };
+    }
     const entries = await prisma.journalEntry.findMany({
-      where: { journal: { authorId: auth.user.id } },
+      where,
       orderBy: { createdAt: "desc" },
       take: limit,
       include: {
