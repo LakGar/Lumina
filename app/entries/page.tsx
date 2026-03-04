@@ -121,8 +121,8 @@ export default function EntriesPage() {
                 journalId: number;
                 content: string;
                 createdAt: string;
-                journal?: { title: string };
-                mood?: { label: string };
+                journal?: { id: number; title: string };
+                mood?: { label: string } | null;
                 tags?: Array<{ tag: string }>;
               }) => (
                 <li key={e.id}>

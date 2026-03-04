@@ -7,6 +7,12 @@ import { getStripe } from "@/app/api/_lib/stripe";
 
 const prisma = new PrismaClient();
 
+type StripeSubscription = {
+  id: string;
+  status: string;
+  current_period_end: number | null;
+};
+
 export async function OPTIONS() {
   return corsPreflight();
 }
@@ -52,7 +58,7 @@ export async function POST(req: NextRequest) {
       status: "all",
       limit: 1,
     });
-    const sub = subs.data[0];
+    const sub = subs.data[0] as unknown as StripeSubscription | undefined;
     if (!sub) {
       await prisma.billing.updateMany({
         where: { userId: auth.user.id },

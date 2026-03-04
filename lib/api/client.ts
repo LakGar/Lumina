@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 
-type Method = "GET" | "POST" | "PATCH" | "DELETE";
+type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 async function api<T>(
   path: string,

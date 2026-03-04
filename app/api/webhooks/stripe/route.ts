@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
         if (customerId) {
           const customer = await stripe.customers.retrieve(customerId);
           const email =
-            typeof customer !== "deleted" && customer.email
+            customer && !("deleted" in customer && customer.deleted) && customer.email
               ? customer.email
               : null;
           if (email) {

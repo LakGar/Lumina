@@ -294,3 +294,26 @@ model PromptCompletion {
   @@index([userId])
   @@index([userId, createdAt])
 }
+
+// ——— Landing: contact form submissions (public) ———
+model LandingContact {
+  id        Int      @id @default(autoincrement())
+  name      String?
+  email     String
+  message   String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// ——— Landing: waitlist signups (TestFlight / app launch) ———
+model WaitlistEntry {
+  id        Int      @id @default(autoincrement())
+  email     String
+  name      String?
+  source    String?  // "nav" | "hero" | "pricing" | "cta"
+  createdAt DateTime @default(now())
+
+  @@unique([email])
+  @@index([createdAt])
+}

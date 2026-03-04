@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { EntryEditor } from "@/components/entry-editor";
 import {
   IconBook2,
-  IconMood,
+  IconMoodHappy,
   IconTag,
   IconSparkles,
   IconRefresh,
@@ -282,7 +282,7 @@ export default function EntryPage() {
         <div className="grid gap-6 sm:grid-cols-2">
           <div className="space-y-3">
             <Label className="flex items-center gap-2">
-              <IconMood className="size-4" />
+              <IconMoodHappy className="size-4" />
               Your mood
             </Label>
             <Select
