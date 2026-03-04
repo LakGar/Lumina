@@ -23,7 +23,7 @@ const mockJournalCreate = jest.fn();
 const mockJournalUpdate = jest.fn();
 const mockJournalDelete = jest.fn();
 
-jest.mock("@/app/generated/prisma/client", () => ({
+jest.mock("@prisma/client", () => ({
   PrismaClient: jest.fn().mockImplementation(() => ({
     journal: {
       findMany: (...args: unknown[]) => mockJournalFindMany(...args),

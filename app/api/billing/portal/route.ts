@@ -4,7 +4,7 @@ import { finishRequest, getRequestId } from "@/app/api/_lib/logger";
 import { corsPreflight } from "@/app/api/_lib/cors";
 import { getStripe, getOrCreateStripeCustomerId } from "@/app/api/_lib/stripe";
 import { getAppBaseUrl } from "@/app/api/_lib/app-url";
-import { PrismaClient } from "@/app/generated/prisma/client";
+import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 

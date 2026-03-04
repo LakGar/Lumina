@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
-import { PrismaClient } from "@/app/generated/prisma/client";
+import { PrismaClient } from "@prisma/client";
 import { getStripe } from "@/app/api/_lib/stripe";
 import { getRequestId, finishRequest } from "@/app/api/_lib/logger";
 

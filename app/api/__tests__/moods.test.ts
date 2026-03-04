@@ -23,7 +23,7 @@ const mockMoodCreate = jest.fn();
 const mockMoodUpdate = jest.fn();
 const mockMoodDelete = jest.fn();
 
-jest.mock("@/app/generated/prisma/client", () => ({
+jest.mock("@prisma/client", () => ({
   PrismaClient: jest.fn().mockImplementation(() => ({
     mood: {
       findMany: (...args: unknown[]) => mockMoodFindMany(...args),

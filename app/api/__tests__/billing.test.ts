@@ -41,7 +41,7 @@ jest.mock("@/app/api/_lib/stripe", () => ({
 
 const mockUserFindUnique = jest.fn();
 
-jest.mock("@/app/generated/prisma/client", () => ({
+jest.mock("@prisma/client", () => ({
   PrismaClient: jest.fn().mockImplementation(() => ({
     user: {
       findUnique: (...args: unknown[]) => mockUserFindUnique(...args),

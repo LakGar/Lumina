@@ -21,7 +21,7 @@ const mockEntryFindFirst = jest.fn();
 const mockEntryTagUpsert = jest.fn();
 const mockEntryTagDeleteMany = jest.fn();
 
-jest.mock("@/app/generated/prisma/client", () => ({
+jest.mock("@prisma/client", () => ({
   PrismaClient: jest.fn().mockImplementation(() => ({
     journalEntry: {
       findFirst: (...args: unknown[]) => mockEntryFindFirst(...args),

@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@/app/generated/prisma/client";
+import { PrismaClient, TagSource } from "@prisma/client";
 import { requireAuth } from "@/app/api/_lib/auth";
 import { finishRequest, getRequestId } from "@/app/api/_lib/logger";
 import { corsPreflight } from "@/app/api/_lib/cors";
-import { TagSource } from "@/app/generated/prisma/enums";
 
 const prisma = new PrismaClient();
 

@@ -20,7 +20,7 @@ const mockFindUnique = jest.fn();
 const mockCreate = jest.fn();
 const mockUpsert = jest.fn();
 
-jest.mock("@/app/generated/prisma/client", () => ({
+jest.mock("@prisma/client", () => ({
   PrismaClient: jest.fn().mockImplementation(() => ({
     userPrefferences: {
       findUnique: (...args: unknown[]) => mockFindUnique(...args),
