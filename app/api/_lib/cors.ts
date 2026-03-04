@@ -8,9 +8,10 @@ const ALLOWED_ORIGINS =
 
 export function getAllowedOrigin(requestOrigin: string | null): string | null {
   if (DEV_ALLOW_ANY && !ALLOWED_ORIGINS.length) return requestOrigin ?? "*";
+  if (ALLOWED_ORIGINS.includes("*"))
+    return "*"; // Allow any origin (e.g. Expo, mobile apps)
   if (!requestOrigin) return null;
-  if (ALLOWED_ORIGINS.includes(requestOrigin) || ALLOWED_ORIGINS.includes("*"))
-    return requestOrigin;
+  if (ALLOWED_ORIGINS.includes(requestOrigin)) return requestOrigin;
   return null;
 }
 
