@@ -4,7 +4,8 @@ import BlogContent from "./BlogContent";
 
 export const metadata: Metadata = {
   title: "Blog",
-  description: "Reflection tips, product updates, and stories from the Lumina team.",
+  description:
+    "Reflection tips, product updates, and stories from the Lumina team.",
 };
 
 export default function BlogPage() {

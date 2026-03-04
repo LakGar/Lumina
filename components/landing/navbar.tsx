@@ -45,13 +45,15 @@ const Navbar = () => {
   const isHome = pathname === "/";
   const isBlogPage = pathname === "/blog" || pathname.startsWith("/blog/");
   const [isPastBlogHero, setIsPastBlogHero] = useState(false);
+  const [isInLandingHero, setIsInLandingHero] = useState(true);
 
   const useDarkNav =
     isOverFeature ||
     pathname === "/terms" ||
     pathname === "/privacy" ||
     (isBlogPage && isPastBlogHero);
-  const useLightNav = isBlogPage && !isPastBlogHero;
+  const useLightNav =
+    (isBlogPage && !isPastBlogHero) || (isHome && isInLandingHero);
 
   useEffect(() => {
     document.documentElement.style.scrollBehavior = "smooth";
@@ -95,6 +97,21 @@ const Navbar = () => {
       window.removeEventListener("resize", check);
     };
   }, [isBlogPage]);
+
+  useEffect(() => {
+    if (!isHome) return;
+    const check = () => {
+      const heroHeight = typeof window !== "undefined" ? window.innerHeight : 800;
+      setIsInLandingHero(window.scrollY < heroHeight - 1);
+    };
+    check();
+    window.addEventListener("scroll", check, { passive: true });
+    window.addEventListener("resize", check);
+    return () => {
+      window.removeEventListener("scroll", check);
+      window.removeEventListener("resize", check);
+    };
+  }, [isHome]);
 
   useEffect(() => {
     const handleScroll = () => {
