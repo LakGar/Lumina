@@ -56,6 +56,7 @@ type Entry = {
   journalId: number;
   content: string;
   createdAt: string;
+  prompt?: string | null;
   journal?: { id: number; title: string };
   mood?: { id: number; label: string; score?: number };
   tags?: Array<{ tag: string; source: string }>;
@@ -269,12 +270,18 @@ export default function EntryPage() {
           </div>
         </div>
 
+        {entry.prompt ? (
+          <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm">
+            <p className="font-medium text-primary/90">Prompt</p>
+            <p className="mt-1 text-muted-foreground">{entry.prompt}</p>
+          </div>
+        ) : null}
         <div className="grid gap-2">
           <Label>Content</Label>
           <EntryEditor
             value={content}
             onChange={setContent}
-            placeholder="Start writing…"
+            placeholder={entry.prompt ? undefined : "Start writing…"}
             disabled={updateMutation.isPending}
           />
         </div>

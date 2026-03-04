@@ -17,10 +17,23 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 
 const THEMES = ["SYSTEM", "LIGHT", "DARK"] as const;
+const COLOR_SCHEMES = [
+  "DEFAULT",
+  "WARM",
+  "COOL",
+  "OCEAN",
+  "FOREST",
+  "ROSE",
+  "SLATE",
+  "SUNSET",
+  "LAVENDER",
+  "MINT",
+] as const;
 
 export default function PreferencesPage() {
   const queryClient = useQueryClient();
   const [theme, setTheme] = useState<string>("SYSTEM");
+  const [colorScheme, setColorScheme] = useState<string>("DEFAULT");
   const [goal, setGoal] = useState("");
   const [topics, setTopics] = useState("");
   const [reason, setReason] = useState("");
@@ -30,10 +43,17 @@ export default function PreferencesPage() {
     queryFn: () => apiClient.me.preferences.get(),
   });
 
-  const prefs = data?.data as { theme?: string; goal?: string | null; topics?: string | null; reason?: string | null } | undefined;
+  const prefs = data?.data as {
+    theme?: string;
+    colorScheme?: string;
+    goal?: string | null;
+    topics?: string | null;
+    reason?: string | null;
+  } | undefined;
   useEffect(() => {
     if (prefs) {
       setTheme(prefs.theme ?? "SYSTEM");
+      setColorScheme(prefs.colorScheme ?? "DEFAULT");
       setGoal(prefs.goal ?? "");
       setTopics(prefs.topics ?? "");
       setReason(prefs.reason ?? "");
@@ -41,8 +61,13 @@ export default function PreferencesPage() {
   }, [prefs]);
 
   const updateMutation = useMutation({
-    mutationFn: (updates: { theme?: string; goal?: string | null; topics?: string | null; reason?: string | null }) =>
-      apiClient.me.preferences.update(updates),
+    mutationFn: (updates: {
+      theme?: string;
+      colorScheme?: string;
+      goal?: string | null;
+      topics?: string | null;
+      reason?: string | null;
+    }) => apiClient.me.preferences.update(updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["preferences"] });
       toast.success("Preferences saved");
@@ -53,6 +78,9 @@ export default function PreferencesPage() {
   const handleSave = () => {
     updateMutation.mutate({
       theme: THEMES.includes(theme as (typeof THEMES)[number]) ? theme : undefined,
+      colorScheme: COLOR_SCHEMES.includes(colorScheme as (typeof COLOR_SCHEMES)[number])
+        ? colorScheme
+        : undefined,
       goal: goal.trim() || null,
       topics: topics.trim() || null,
       reason: reason.trim() || null,
@@ -83,6 +111,23 @@ export default function PreferencesPage() {
                   {THEMES.map((t) => (
                     <SelectItem key={t} value={t}>
                       {t.charAt(0) + t.slice(1).toLowerCase()}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Color scheme</Label>
+              <Select value={colorScheme} onValueChange={setColorScheme}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {COLOR_SCHEMES.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c === "DEFAULT"
+                        ? "Default"
+                        : c.charAt(0) + c.slice(1).toLowerCase()}
                     </SelectItem>
                   ))}
                 </SelectContent>

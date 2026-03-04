@@ -21,8 +21,10 @@ async function api<T>(
       (json as { error?: string }).error ?? res.statusText,
     ) as Error & {
       status: number;
+      body?: { error?: string; code?: string };
     };
     err.status = res.status;
+    err.body = json as { error?: string; code?: string };
     throw err;
   }
   if (schema) return schema.parse(json) as T;
@@ -118,11 +120,17 @@ export const apiClient = {
       journalId: number,
       content: string,
       source: "TEXT" | "VOICE" = "TEXT",
-      opts?: { mood?: string; tags?: string[] },
+      opts?: { mood?: string; tags?: string[]; prompt?: string | null },
     ) =>
       api<{ data: unknown }>(`/api/journals/${journalId}/entries`, {
         method: "POST",
-        body: { content, source, mood: opts?.mood, tags: opts?.tags },
+        body: {
+          content,
+          source,
+          mood: opts?.mood,
+          tags: opts?.tags,
+          prompt: opts?.prompt ?? undefined,
+        },
       }),
     get: (id: number) =>
       api<{ data: unknown }>(`/api/entries/${id}`, {
@@ -304,6 +312,7 @@ export const apiClient = {
         }),
       update: (body: {
         theme?: string;
+        colorScheme?: string;
         goal?: string | null;
         topics?: string | null;
       }) =>

@@ -166,6 +166,8 @@ export async function POST(
     const body = await req.json();
     const content =
       typeof body?.content === "string" ? body.content.trim() : "";
+    const prompt =
+      typeof body?.prompt === "string" ? body.prompt.trim() || null : null;
     if (!content) {
       const res = NextResponse.json(
         { error: "content is required" },
@@ -195,6 +197,7 @@ export async function POST(
         journalId: journal.id,
         content,
         source,
+        ...(prompt != null && { prompt }),
       },
       include: {
         summary: true,

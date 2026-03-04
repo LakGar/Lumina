@@ -32,6 +32,7 @@ export default function JournalEntriesPage() {
   const queryClient = useQueryClient();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [content, setContent] = useState("");
+  const [entryPrompt, setEntryPrompt] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMessage, setChatMessage] = useState("");
   const [chatSessionId, setChatSessionId] = useState<number | undefined>();
@@ -57,11 +58,21 @@ export default function JournalEntriesPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (c: string) => apiClient.entries.create(id, c),
+    mutationFn: ({
+      c,
+      p,
+    }: {
+      c: string;
+      p?: string | null;
+    }) =>
+      apiClient.entries.create(id, c, "TEXT", {
+        prompt: p && p.trim() ? p.trim() : undefined,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["journals", id, "entries"] });
       queryClient.invalidateQueries({ queryKey: ["me", "entries"] });
       setContent("");
+      setEntryPrompt("");
       setSheetOpen(false);
       toast.success("Entry created");
     },
@@ -100,7 +111,10 @@ export default function JournalEntriesPage() {
       toast.error("Write something first.");
       return;
     }
-    createMutation.mutate(parsed.data.content);
+    createMutation.mutate({
+      c: parsed.data.content,
+      p: entryPrompt.trim() || undefined,
+    });
   };
 
   if (Number.isNaN(id)) {
@@ -166,6 +180,18 @@ export default function JournalEntriesPage() {
                 <SheetTitle>New entry</SheetTitle>
               </SheetHeader>
               <div className="flex flex-1 flex-col gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="entry-prompt" className="text-muted-foreground text-sm">
+                    Optional prompt
+                  </Label>
+                  <Input
+                    id="entry-prompt"
+                    value={entryPrompt}
+                    onChange={(e) => setEntryPrompt(e.target.value)}
+                    placeholder="e.g. What went well today?"
+                    className="rounded-md"
+                  />
+                </div>
                 <div className="grid gap-2 flex-1">
                   <Label htmlFor="entry-content">Content</Label>
                   <textarea

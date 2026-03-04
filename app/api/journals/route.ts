@@ -7,6 +7,11 @@ import {
   finishRequest,
 } from "@/app/api/_lib/logger";
 import { corsPreflight } from "@/app/api/_lib/cors";
+import {
+  getIsPro,
+  FREE_JOURNAL_LIMIT,
+  planLimitResponse,
+} from "@/app/api/_lib/plan";
 
 const prisma = new PrismaClient();
 
@@ -87,6 +92,23 @@ export async function POST(req: NextRequest) {
         start,
         statusCode: 400,
       });
+    }
+    const isPro = await getIsPro(prisma, auth.user.id);
+    if (!isPro) {
+      const count = await prisma.journal.count({
+        where: { authorId: auth.user.id },
+      });
+      if (count >= FREE_JOURNAL_LIMIT) {
+        const res = planLimitResponse(
+          `Free plan is limited to ${FREE_JOURNAL_LIMIT} journals. Upgrade to Lumina for unlimited journals.`,
+        );
+        return finishRequest(req, res, {
+          requestId,
+          userId: auth.userId,
+          start,
+          statusCode: 403,
+        });
+      }
     }
     const journal = await prisma.journal.create({
       data: {

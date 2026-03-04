@@ -11,6 +11,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -34,15 +35,27 @@ export function NewEntrySheet() {
   const { data: journalsData } = useJournals();
   const [journalId, setJournalId] = useState<number | "">("");
   const [content, setContent] = useState("");
+  const [prompt, setPrompt] = useState("");
 
   const createMutation = useMutation({
-    mutationFn: ({ jId, c }: { jId: number; c: string }) =>
-      apiClient.entries.create(jId, c),
+    mutationFn: ({
+      jId,
+      c,
+      p,
+    }: {
+      jId: number;
+      c: string;
+      p?: string | null;
+    }) =>
+      apiClient.entries.create(jId, c, "TEXT", {
+        prompt: p && p.trim() ? p.trim() : undefined,
+      }),
     onSuccess: (_, { jId }) => {
       queryClient.invalidateQueries({ queryKey: ["journals", jId, "entries"] });
       queryClient.invalidateQueries({ queryKey: ["me", "entries"] });
       queryClient.invalidateQueries({ queryKey: ["journals"] });
       setContent("");
+      setPrompt("");
       setNewEntryOpen(false);
       toast.success("Entry created");
     },
@@ -63,6 +76,7 @@ export function NewEntrySheet() {
     createMutation.mutate({
       jId: parsed.data.journalId,
       c: parsed.data.content,
+      p: prompt.trim() || undefined,
     });
   };
 
@@ -122,6 +136,21 @@ export function NewEntrySheet() {
             </Select>
           </div>
           <div className="flex min-h-0 flex-1 flex-col gap-3">
+            <div className="space-y-2">
+              <Label
+                htmlFor="new-entry-prompt"
+                className="text-sm font-medium text-muted-foreground"
+              >
+                Optional prompt
+              </Label>
+              <Input
+                id="new-entry-prompt"
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder="e.g. What went well today?"
+                className="rounded-xl border-border/80 bg-muted/30"
+              />
+            </div>
             <Label htmlFor="new-entry-content" className="text-sm font-medium">
               What&apos;s on your mind?
             </Label>

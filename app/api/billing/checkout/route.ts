@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { requireAuth } from "@/app/api/_lib/auth";
 import { finishRequest, getRequestId } from "@/app/api/_lib/logger";
 import { corsPreflight } from "@/app/api/_lib/cors";
+import { getIsPro } from "@/app/api/_lib/plan";
 import { getStripe, getOrCreateStripeCustomerId } from "@/app/api/_lib/stripe";
 import { getAppBaseUrl } from "@/app/api/_lib/app-url";
 
@@ -37,6 +38,32 @@ export async function POST(req: NextRequest) {
     });
   }
   try {
+    const isPro = await getIsPro(prisma, auth.user.id);
+    if (isPro) {
+      const baseUrl = getAppBaseUrl(req);
+      const stripe = getStripe();
+      const customerId = await getOrCreateStripeCustomerId(
+        auth.user.id,
+        (await prisma.user.findUnique({ where: { id: auth.user.id }, select: { email: true } }))?.email ?? "",
+      );
+      const portalSession = await stripe.billingPortal.sessions.create({
+        customer: customerId,
+        return_url: `${baseUrl}/dashboard`,
+      });
+      const res = NextResponse.json({
+        data: {
+          url: portalSession.url,
+          sessionId: portalSession.id,
+          alreadySubscribed: true,
+        },
+      });
+      return finishRequest(req, res, {
+        requestId,
+        userId: auth.userId,
+        start,
+        statusCode: 200,
+      });
+    }
     const user = await prisma.user.findUnique({
       where: { id: auth.user.id },
       select: { email: true },

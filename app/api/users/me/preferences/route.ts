@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient, Theme } from "@prisma/client";
+import { PrismaClient, Theme, ColorScheme } from "@prisma/client";
 import { requireAuth } from "@/app/api/_lib/auth";
 import { finishRequest, getRequestId } from "@/app/api/_lib/logger";
 import { corsPreflight } from "@/app/api/_lib/cors";
@@ -69,12 +69,16 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json();
     const updates: {
       theme?: Theme;
+      colorScheme?: ColorScheme;
       goal?: string | null;
       topics?: string | null;
       reason?: string | null;
     } = {};
     if (body?.theme && Object.values(Theme).includes(body.theme)) {
       updates.theme = body.theme;
+    }
+    if (body?.colorScheme && Object.values(ColorScheme).includes(body.colorScheme)) {
+      updates.colorScheme = body.colorScheme;
     }
     if (body?.goal !== undefined)
       updates.goal = typeof body.goal === "string" ? body.goal : null;

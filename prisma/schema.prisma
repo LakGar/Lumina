@@ -39,11 +39,12 @@ model User {
 }
 
 model userPrefferences {
-  id     Int    @id @default(autoincrement())
-  theme  Theme  @default(SYSTEM)
-  goal   String?
-  topics String?
-  reason String?
+  id           Int         @id @default(autoincrement())
+  theme        Theme       @default(SYSTEM)
+  colorScheme  ColorScheme @default(DEFAULT)
+  goal         String?
+  topics       String?
+  reason       String?
 
   aiSummariesEnabled    Boolean @default(true)
   autoTaggingEnabled    Boolean @default(true)
@@ -114,6 +115,9 @@ model JournalEntry {
 
   journal   Journal @relation(fields: [journalId], references: [id], onDelete: Cascade)
   journalId Int
+
+  // optional prompt shown when opening this entry (e.g. "What went well today?")
+  prompt String? @db.Text
 
   // source-of-truth content
   content String      @db.Text
@@ -205,9 +209,22 @@ enum TagSource {
 }
 
 enum Theme {
-  DARK 
+  DARK
   LIGHT
   SYSTEM
+}
+
+enum ColorScheme {
+  DEFAULT
+  WARM
+  COOL
+  OCEAN
+  FOREST
+  ROSE
+  SLATE
+  SUNSET
+  LAVENDER
+  MINT
 }
 
 enum NotificationFrequency {

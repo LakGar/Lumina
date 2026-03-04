@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { requireAuth } from "@/app/api/_lib/auth";
 import { finishRequest, getRequestId } from "@/app/api/_lib/logger";
 import { corsPreflight } from "@/app/api/_lib/cors";
+import { getIsPro, planLimitResponse } from "@/app/api/_lib/plan";
 import { chatCompletion } from "@/app/api/_lib/openrouter";
 
 const prisma = new PrismaClient();
@@ -70,6 +71,18 @@ export async function POST(
       userId: auth.userId,
       start,
       statusCode: 404,
+    });
+  }
+  const isPro = await getIsPro(prisma, auth.user.id);
+  if (!isPro) {
+    const res = planLimitResponse(
+      "Chat with context is a Lumina feature. Upgrade to talk to your journal coach.",
+    );
+    return finishRequest(req, res, {
+      requestId,
+      userId: auth.userId,
+      start,
+      statusCode: 403,
     });
   }
   let body: { message?: string; sessionId?: number };

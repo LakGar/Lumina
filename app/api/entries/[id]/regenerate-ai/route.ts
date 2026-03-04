@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { requireAuth } from "@/app/api/_lib/auth";
 import { finishRequest, getRequestId } from "@/app/api/_lib/logger";
 import { corsPreflight } from "@/app/api/_lib/cors";
+import { getIsPro } from "@/app/api/_lib/plan";
 import { entriesCompletion } from "@/app/api/_lib/openrouter";
 
 const prisma = new PrismaClient();
@@ -122,6 +123,7 @@ export async function POST(
         statusCode: 502,
       });
     }
+    const isPro = await getIsPro(prisma, auth.user.id);
     const moodLabel = parsed.mood.trim() || "neutral";
     const qualityScore =
       parsed.qualityScore != null &&
@@ -137,38 +139,40 @@ export async function POST(
           entryId: entry.id,
           text: parsed.summary,
           model: "openrouter",
-          qualityScore,
+          qualityScore: isPro ? qualityScore : null,
         },
         update: {
           text: parsed.summary,
           model: "openrouter",
-          qualityScore,
+          qualityScore: isPro ? qualityScore : null,
         },
       });
-      await tx.entryMood.upsert({
-        where: { entryId: entry.id },
-        create: {
-          entryId: entry.id,
-          label: moodLabel,
-          score: qualityScore != null ? qualityScore / 100 : null,
-        },
-        update: {
-          label: moodLabel,
-          score: qualityScore != null ? qualityScore / 100 : null,
-        },
-      });
-      await tx.entryTag.deleteMany({
-        where: { entryId: entry.id, source: "AI" },
-      });
-      for (const tag of parsed.tags.slice(0, 10)) {
-        const t = tag.trim();
-        if (!t) continue;
-        await tx.entryTag.upsert({
-          where: {
-            entryId_tag: { entryId: entry.id, tag: t },
+      if (isPro) {
+        await tx.entryMood.upsert({
+          where: { entryId: entry.id },
+          create: {
+            entryId: entry.id,
+            label: moodLabel,
+            score: qualityScore != null ? qualityScore / 100 : null,
           },
-          create: { entryId: entry.id, tag: t, source: "AI" },
-          update: {},
+          update: {
+            label: moodLabel,
+            score: qualityScore != null ? qualityScore / 100 : null,
+          },
+        });
+        await tx.entryTag.deleteMany({
+          where: { entryId: entry.id, source: "AI" },
+        });
+        for (const tag of parsed.tags.slice(0, 10)) {
+          const t = tag.trim();
+          if (!t) continue;
+          await tx.entryTag.upsert({
+            where: {
+              entryId_tag: { entryId: entry.id, tag: t },
+            },
+            create: { entryId: entry.id, tag: t, source: "AI" },
+            update: {},
+          });
         });
       }
     });
