@@ -173,7 +173,7 @@ export async function POST(
             create: { entryId: entry.id, tag: t, source: "AI" },
             update: {},
           });
-        });
+        }
       }
     });
 

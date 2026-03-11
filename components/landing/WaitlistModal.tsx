@@ -20,6 +20,7 @@ export function WaitlistModal({
   const [name, setName] = React.useState("");
   const [status, setStatus] = React.useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = React.useState("");
+  const [alreadyOnList, setAlreadyOnList] = React.useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,6 +42,7 @@ export function WaitlistModal({
         setErrorMessage(data?.error ?? "Something went wrong.");
         return;
       }
+      setAlreadyOnList(Boolean(data?.alreadyOnList));
       setStatus("success");
       setEmail("");
       setName("");
@@ -55,6 +57,7 @@ export function WaitlistModal({
       setTimeout(() => {
         setStatus("idle");
         setErrorMessage("");
+        setAlreadyOnList(false);
       }, 200);
     }
     onOpenChange(next);
@@ -112,7 +115,9 @@ export function WaitlistModal({
 
           {status === "success" ? (
             <p className="font-body mt-6 text-sm" style={{ color: "#1E1E1E" }}>
-              You’re on the list. We’ll be in touch when TestFlight is live.
+              {alreadyOnList
+                ? "You’re already on the list. We’ll be in touch when TestFlight is live."
+                : "You’re on the list. We’ll be in touch when TestFlight is live."}
             </p>
           ) : (
             <form onSubmit={handleSubmit} className="mt-6 space-y-4">

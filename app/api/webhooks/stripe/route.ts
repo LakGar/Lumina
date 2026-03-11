@@ -173,13 +173,13 @@ export async function POST(req: NextRequest) {
         if (result.count === 0) {
           const stripe = getStripe();
           const customer = await stripe.customers.retrieve(customerId);
+          const isDeleted = customer && "deleted" in customer && customer.deleted;
           const email =
-            customer &&
-            !("deleted" in customer && customer.deleted) &&
-            customer.email
-              ? customer.email
-              : null;
-          const rawUserId = customer?.metadata?.luminaUserId;
+            customer && !isDeleted && customer.email ? customer.email : null;
+          const rawUserId =
+            customer && !isDeleted && "metadata" in customer
+              ? (customer as Stripe.Customer).metadata?.luminaUserId
+              : undefined;
           let userId: number | null =
             typeof rawUserId === "string"
               ? parseInt(rawUserId, 10)

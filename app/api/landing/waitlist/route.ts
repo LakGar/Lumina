@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { Resend } from "resend";
 
-const OWNER_EMAIL = "lakgarg200@gmail.com";
+const OWNER_EMAIL = "lakgarg2002@gmail.com";
 const FROM_EMAIL = "lakshay@theempowerweb.com";
 const FROM_NAME = "Lumina powered by Theempowerweb";
 
@@ -20,10 +20,18 @@ export async function POST(req: NextRequest) {
     const name = typeof body?.name === "string" ? body.name.trim() : null;
     const source = typeof body?.source === "string" ? body.source : null;
 
-    await prisma.waitlistEntry.upsert({
+    const existing = await prisma.waitlistEntry.findUnique({
       where: { email },
-      create: { email, name, source },
-      update: { name: name ?? undefined, source: source ?? undefined },
+    });
+    if (existing) {
+      return NextResponse.json(
+        { ok: true, alreadyOnList: true },
+        { status: 200 },
+      );
+    }
+
+    await prisma.waitlistEntry.create({
+      data: { email, name, source },
     });
 
     const apiKey = process.env.RESEND_API_KEY;
@@ -45,16 +53,13 @@ export async function POST(req: NextRequest) {
         ].join(""),
       });
 
-      // Confirmation to the person who signed up (from lakshay@theempowerweb.com, title: Lumina powered by Theempowerweb)
+      // Nice confirmation email to the person who signed up (Theempowerweb powering Lumina)
+      const greeting = name ? `Hi ${escapeHtml(name)},` : "Hi there,";
       await resend.emails.send({
         from: `${FROM_NAME} <${FROM_EMAIL}>`,
         to: [email],
-        subject: "Lumina powered by Theempowerweb",
-        html: [
-          "<p>Thanks for joining the Lumina waitlist.</p>",
-          "<p>We're preparing for TestFlight and will notify you when Lumina is ready to try.</p>",
-          "<p>— The Lumina team</p>",
-        ].join(""),
+        subject: "You're on the list — Lumina by Theempowerweb",
+        html: getWaitlistConfirmationHtml(greeting),
       });
     }
 
@@ -76,4 +81,36 @@ function escapeHtml(s: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function getWaitlistConfirmationHtml(greeting: string): string {
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0; padding:0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f0; color: #1a1a1a;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f5f5f0;">
+    <tr>
+      <td style="padding: 40px 20px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 520px; margin: 0 auto; background-color: #FDFCF9; border-radius: 16px; border: 1px solid #e5ddd4; box-shadow: 0 4px 12px rgba(0,0,0,0.06);">
+          <tr>
+            <td style="padding: 40px 36px;">
+              <p style="margin: 0 0 8px 0; font-size: 13px; color: #6B6B6B; letter-spacing: 0.02em; text-transform: uppercase;">Theempowerweb</p>
+              <h1 style="margin: 0 0 28px 0; font-size: 24px; font-weight: 600; color: #1E1E1E; letter-spacing: -0.02em;">Lumina</h1>
+              <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 1.6; color: #1E1E1E;">${greeting}</p>
+              <p style="margin: 0 0 20px 0; font-size: 16px; line-height: 1.6; color: #1E1E1E;">Thank you for joining the Lumina waitlist. We're building a place for reflection and growth, and we're glad you want to be part of it.</p>
+              <p style="margin: 0 0 28px 0; font-size: 16px; line-height: 1.6; color: #1E1E1E;">We're preparing for TestFlight and will email you as soon as Lumina is ready to try. You're on the list — we won't forget you.</p>
+              <p style="margin: 0; font-size: 15px; line-height: 1.5; color: #6B6B6B;">Lumina is powered by <strong style="color: #1E1E1E;">Theempowerweb</strong>.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
 }

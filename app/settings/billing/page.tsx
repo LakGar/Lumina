@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import { apiClient } from "@/lib/api/client";
@@ -16,7 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const ACTIVE_STATUSES = ["active", "trialing"];
 
-export default function BillingPage() {
+function BillingPageContent() {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const hasSyncedAfterCheckout = useRef(false);
@@ -169,5 +169,13 @@ export default function BillingPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function BillingPage() {
+  return (
+    <Suspense fallback={<Skeleton className="h-24 w-full max-w-md" />}>
+      <BillingPageContent />
+    </Suspense>
   );
 }
