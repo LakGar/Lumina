@@ -1,6 +1,8 @@
 "use client";
 
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "next/navigation";
 import { apiClient } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +17,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 const ACTIVE_STATUSES = ["active", "trialing"];
 
 export default function BillingPage() {
+  const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
+  const hasSyncedAfterCheckout = useRef(false);
+
   const {
     data: subscription,
     isLoading,
@@ -24,6 +30,24 @@ export default function BillingPage() {
     queryFn: () => apiClient.billing.subscription(),
     refetchOnWindowFocus: true,
   });
+
+  // After returning from Stripe checkout, sync billing from Stripe so UI shows Pro immediately
+  useEffect(() => {
+    if (searchParams.get("checkout") !== "success" || hasSyncedAfterCheckout.current) return;
+    hasSyncedAfterCheckout.current = true;
+    apiClient.billing
+      .sync()
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ["billing", "subscription"] });
+        toast.success("Subscription updated");
+      })
+      .catch(() => {})
+      .finally(() => {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("checkout");
+        window.history.replaceState({}, "", url.pathname + url.search);
+      });
+  }, [searchParams, queryClient]);
 
   const status = subscription?.data?.status ?? null;
   const isPro = status !== null && ACTIVE_STATUSES.includes(status);

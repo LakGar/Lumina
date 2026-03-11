@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "next/navigation";
 import { ChartAreaInteractive } from "@/components/chart-area-interactive";
 import { DataTable } from "@/components/data-table";
 import { SectionCards } from "@/components/section-cards";
@@ -23,7 +24,27 @@ import { toast } from "sonner";
 
 export function DashboardContent() {
   const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
+  const hasSyncedAfterCheckout = useRef(false);
   const [moodModalOpen, setMoodModalOpen] = useState(false);
+
+  // After returning from Stripe checkout, sync billing so subscription shows as Pro everywhere
+  useEffect(() => {
+    if (searchParams.get("checkout") !== "success" || hasSyncedAfterCheckout.current) return;
+    hasSyncedAfterCheckout.current = true;
+    apiClient.billing
+      .sync()
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ["billing", "subscription"] });
+        toast.success("Subscription updated");
+      })
+      .catch(() => {})
+      .finally(() => {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("checkout");
+        window.history.replaceState({}, "", url.pathname + url.search);
+      });
+  }, [searchParams, queryClient]);
   const { tableRows, contributionData, stats, journals, entries } =
     useDashboardData();
   const { data: backendStats, isLoading: statsLoading } = useQuery({

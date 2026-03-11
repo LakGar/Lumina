@@ -79,3 +79,14 @@ export function getClientMeta(req: { headers?: Headers }): {
     clientVersion: headers.get("x-client-version") ?? undefined,
   };
 }
+
+/** Build a 500 JSON response; in development include `detail` for debugging. */
+export function json500(
+  error: string,
+  meta?: { errorName?: string; errorMessage?: string },
+): NextResponse {
+  const body: { error: string; detail?: string } = { error };
+  if (process.env.NODE_ENV !== "production" && meta?.errorMessage)
+    body.detail = meta.errorMessage;
+  return NextResponse.json(body, { status: 500 });
+}

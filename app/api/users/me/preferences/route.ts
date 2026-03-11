@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient, Theme, ColorScheme } from "@prisma/client";
 import { requireAuth } from "@/app/api/_lib/auth";
-import { finishRequest, getRequestId } from "@/app/api/_lib/logger";
+import { finishRequest, getRequestId, json500 } from "@/app/api/_lib/logger";
 import { corsPreflight } from "@/app/api/_lib/cors";
 
 const prisma = new PrismaClient();
@@ -39,10 +39,10 @@ export async function GET(req: NextRequest) {
     });
   } catch (e) {
     const err = e as Error;
-    const res = NextResponse.json(
-      { error: "Failed to get preferences" },
-      { status: 500 },
-    );
+    const res = json500("Failed to get preferences", {
+      errorName: err.name,
+      errorMessage: err.message,
+    });
     return finishRequest(req, res, {
       requestId,
       userId: auth.userId,

@@ -3,8 +3,8 @@ import { PrismaClient } from "@prisma/client";
 import { requireAuth } from "@/app/api/_lib/auth";
 import {
   getRequestId,
-  getClientMeta,
   finishRequest,
+  json500,
 } from "@/app/api/_lib/logger";
 import { corsPreflight } from "@/app/api/_lib/cors";
 import {
@@ -52,10 +52,10 @@ export async function GET(req: NextRequest) {
     });
   } catch (e) {
     const err = e as Error;
-    const res = NextResponse.json(
-      { error: "Failed to list journals" },
-      { status: 500 },
-    );
+    const res = json500("Failed to list journals", {
+      errorName: err.name,
+      errorMessage: err.message,
+    });
     return finishRequest(req, res, {
       requestId,
       userId: auth.userId,

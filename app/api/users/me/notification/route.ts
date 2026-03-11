@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient, NotificationFrequency } from "@prisma/client";
 import { requireAuth } from "@/app/api/_lib/auth";
-import { finishRequest, getRequestId } from "@/app/api/_lib/logger";
+import { finishRequest, getRequestId, json500 } from "@/app/api/_lib/logger";
 import { corsPreflight } from "@/app/api/_lib/cors";
 
 const prisma = new PrismaClient();
@@ -39,10 +39,10 @@ export async function GET(req: NextRequest) {
     });
   } catch (e) {
     const err = e as Error;
-    const res = NextResponse.json(
-      { error: "Failed to get notification settings" },
-      { status: 500 },
-    );
+    const res = json500("Failed to get notification settings", {
+      errorName: err.name,
+      errorMessage: err.message,
+    });
     return finishRequest(req, res, {
       requestId,
       userId: auth.userId,
@@ -72,9 +72,12 @@ export async function PATCH(req: NextRequest) {
       dailyReminderTime?: string | null;
       timezone?: string | null;
       frequency?: NotificationFrequency | null;
+      emailRemindersEnabled?: boolean;
     } = {};
     if (typeof body?.dailyReminderEnabled === "boolean")
       updates.dailyReminderEnabled = body.dailyReminderEnabled;
+    if (typeof body?.emailRemindersEnabled === "boolean")
+      updates.emailRemindersEnabled = body.emailRemindersEnabled;
     if (body?.dailyReminderTime !== undefined)
       updates.dailyReminderTime =
         typeof body.dailyReminderTime === "string"

@@ -31,6 +31,7 @@ model User {
   weeklyTips          WeeklyTip[]
   promptCompletions   PromptCompletion[]
   reminders          Reminder[]
+  pushTokens         PushToken[]
 
   onboardingComplete Boolean   @default(false)
 
@@ -64,6 +65,7 @@ model Notification {
   dailyReminderTime    String?  // "20:30" (HH:mm)
   timezone             String?  // e.g. "America/Los_Angeles"
   frequency            NotificationFrequency?
+  emailRemindersEnabled Boolean @default(true)
 
   author   User @relation(fields: [authorId], references: [id], onDelete: Cascade)
   authorId Int  @unique
@@ -295,6 +297,21 @@ model Reminder {
   updatedAt DateTime @updatedAt
 
   @@index([authorId, dateISO])
+}
+
+// ——— Expo push tokens (mobile app) ———
+model PushToken {
+  id             Int      @id @default(autoincrement())
+  expoPushToken  String   @unique
+  deviceId       String?
+  platform       String?  // "ios" | "android"
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }
 
 // ——— Prompt completion (go deeper, reflection prompts — used for Lumina level) ———

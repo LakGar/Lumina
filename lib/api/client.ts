@@ -331,10 +331,29 @@ export const apiClient = {
         dailyReminderTime?: string | null;
         timezone?: string | null;
         frequency?: string | null;
+        emailRemindersEnabled?: boolean;
       }) =>
         api<{ data: unknown }>("/api/users/me/notification", {
           method: "PATCH",
           body,
+        }),
+    },
+    pushTokens: {
+      register: (body: {
+        expoPushToken: string;
+        deviceId?: string;
+        platform?: "ios" | "android";
+      }) =>
+        api<{ data: { registered: boolean } }>("/api/users/me/push-tokens", {
+          method: "POST",
+          body,
+          schema: z.object({ data: z.object({ registered: z.boolean() }) }),
+        }),
+      remove: (expoPushToken: string) =>
+        api<{ data: { removed: boolean } }>("/api/users/me/push-tokens", {
+          method: "DELETE",
+          body: { expoPushToken },
+          schema: z.object({ data: z.object({ removed: z.boolean() }) }),
         }),
     },
   },

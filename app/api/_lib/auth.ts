@@ -47,21 +47,26 @@ async function getOrCreateUser(clerkId: string) {
 }
 
 export async function requireAuth(): Promise<AuthResult> {
-  const { userId: clerkId } = await auth();
-  if (!clerkId) {
-    return {
-      ok: false,
-      response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
-    };
-  }
-
   try {
+    const { userId: clerkId } = await auth();
+    if (!clerkId) {
+      return {
+        ok: false,
+        response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+      };
+    }
+
     const user = await getOrCreateUser(clerkId);
     return { ok: true, userId: clerkId, user };
   } catch (e) {
+    const err = e as Error;
+    const body: { error: string; detail?: string } = {
+      error: "Authentication failed",
+    };
+    if (process.env.NODE_ENV !== "production") body.detail = err.message;
     return {
       ok: false,
-      response: NextResponse.json({ error: "User not found" }, { status: 404 }),
+      response: NextResponse.json(body, { status: 500 }),
     };
   }
 }

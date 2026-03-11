@@ -35,12 +35,13 @@
 6. [User: stats, subscription](#6-user-stats-subscription)
 7. [User: privacy & data deletion](#7-user-privacy--data-deletion)
 8. [User: reminders](#8-user-reminders)
-9. [User: weekly tips](#9-user-weekly-tips)
-10. [Billing](#10-billing)
-11. [Onboarding](#11-onboarding)
-12. [Journal chat (AI)](#12-journal-chat-ai)
-13. [Webhooks](#13-webhooks)
-14. [Quick reference table](#14-quick-reference-table)
+9. [User: push tokens](#9-user-push-tokens)
+10. [User: weekly tips](#10-user-weekly-tips)
+11. [Billing](#11-billing)
+12. [Onboarding](#12-onboarding)
+13. [Journal chat (AI)](#13-journal-chat-ai)
+14. [Webhooks](#14-webhooks)
+15. [Quick reference table](#15-quick-reference-table)
 
 ---
 
@@ -576,6 +577,7 @@ Get notification settings. **Response:** `200 OK`
     "dailyReminderEnabled": true,
     "dailyReminderTime": "20:30",
     "timezone": "America/Los_Angeles",
+    "emailRemindersEnabled": true,
     "frequency": "DAILY",
     "authorId": 1,
     "createdAt": "...",
@@ -597,7 +599,8 @@ Update notification settings. **Body (all optional):**
   "dailyReminderEnabled": true,
   "dailyReminderTime": "20:30",
   "timezone": "America/Los_Angeles",
-  "frequency": "DAILY"
+  "frequency": "DAILY",
+  "emailRemindersEnabled": true
 }
 ```
 
@@ -746,7 +749,39 @@ Delete a reminder. **Response:** `204 No Content`. **Errors:** `400`, `404`.
 
 ---
 
-## 9. User: weekly tips
+## 9. User: push tokens
+
+Register or remove Expo push tokens for the mobile app (used for push notifications). All require auth.
+
+### POST /api/users/me/push-tokens
+
+Register an Expo push token (upsert by token). Call after getting the token with `expo-notifications` (e.g. `getExpoPushTokenAsync()`).
+
+**Body:**
+
+```json
+{
+  "expoPushToken": "ExponentPushToken[xxxxx]",
+  "deviceId": "optional-device-id",
+  "platform": "ios"
+}
+```
+
+`expoPushToken`: required; must match `ExponentPushToken[...]`. `deviceId`, `platform` (`"ios"` | `"android"`): optional.
+
+**Response:** `201 Created` with `{ "data": { "registered": true } }`. **Errors:** `400` (invalid token), `401`, `500`.
+
+### DELETE /api/users/me/push-tokens
+
+Remove an Expo push token (e.g. on logout or when user disables notifications).
+
+**Body:** `{ "expoPushToken": "ExponentPushToken[xxxxx]" }` or **query:** `?expoPushToken=...`
+
+**Response:** `200 OK` with `{ "data": { "removed": true } }`. **Errors:** `400`, `401`, `500`.
+
+---
+
+## 10. User: weekly tips
 
 ### GET /api/users/me/weekly-tips
 
@@ -804,7 +839,7 @@ Mark a tip as read. **Body:** none. **Response:** `204 No Content`. **Errors:** 
 
 ---
 
-## 10. Billing
+## 11. Billing
 
 ### POST /api/billing/checkout
 
@@ -862,7 +897,7 @@ Refresh subscription status from Stripe (for “Refresh status” after signup).
 
 ---
 
-## 11. Onboarding
+## 12. Onboarding
 
 ### POST /api/onboard/complete
 
@@ -898,7 +933,7 @@ Complete onboarding: create default journal, first entry, set preferences and no
 
 ---
 
-## 12. Journal chat (AI)
+## 13. Journal chat (AI)
 
 ### POST /api/journals/[id]/chat
 
@@ -932,7 +967,7 @@ Omit `sessionId` for a new conversation; use returned `sessionId` for follow-up 
 
 ---
 
-## 13. Webhooks
+## 14. Webhooks
 
 ### POST /api/webhooks/stripe
 
@@ -940,7 +975,7 @@ Stripe webhook. **Not called by the app.** Stripe sends events here. Backend ver
 
 ---
 
-## 14. Quick reference table
+## 15. Quick reference table
 
 | Method | Path                                  | Purpose                            |
 | ------ | ------------------------------------- | ---------------------------------- |
@@ -979,6 +1014,8 @@ Stripe webhook. **Not called by the app.** Stripe sends events here. Backend ver
 | POST   | `/api/users/me/reminders`             | Create reminder                    |
 | PATCH  | `/api/users/me/reminders/[id]`        | Update reminder                    |
 | DELETE | `/api/users/me/reminders/[id]`        | Delete reminder                    |
+| POST   | `/api/users/me/push-tokens`           | Register Expo push token           |
+| DELETE | `/api/users/me/push-tokens`           | Remove Expo push token             |
 | GET    | `/api/users/me/weekly-tips`           | List weekly tips                   |
 | POST   | `/api/users/me/weekly-tips/generate`  | Generate weekly tip                |
 | PATCH  | `/api/users/me/weekly-tips/[id]/read` | Mark tip read                      |

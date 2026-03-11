@@ -158,18 +158,54 @@ export async function POST(req: NextRequest) {
           "current_period_end" in sub
             ? Number(sub.current_period_end) * 1000
             : null;
-        await prisma.billing.updateMany({
+        const updateData = {
+          stripeSubscriptionId: sub.id,
+          plan:
+            sub.status === "active" || sub.status === "trialing" ? "pro" : null,
+          status: sub.status,
+          currentPeriodEnd: periodEnd ? new Date(periodEnd) : null,
+        };
+        const result = await prisma.billing.updateMany({
           where: { stripeCustomerId: customerId },
-          data: {
-            stripeSubscriptionId: sub.id,
-            plan:
-              sub.status === "active" || sub.status === "trialing"
-                ? "pro"
-                : null,
-            status: sub.status,
-            currentPeriodEnd: periodEnd ? new Date(periodEnd) : null,
-          },
+          data: updateData,
         });
+        // If no row exists yet (e.g. checkout.session.completed was missed), find user and upsert
+        if (result.count === 0) {
+          const stripe = getStripe();
+          const customer = await stripe.customers.retrieve(customerId);
+          const email =
+            customer &&
+            !("deleted" in customer && customer.deleted) &&
+            customer.email
+              ? customer.email
+              : null;
+          const rawUserId = customer?.metadata?.luminaUserId;
+          let userId: number | null =
+            typeof rawUserId === "string"
+              ? parseInt(rawUserId, 10)
+              : typeof rawUserId === "number"
+                ? rawUserId
+                : null;
+          if (userId !== null && Number.isNaN(userId)) userId = null;
+          if (!userId && email) {
+            const user = await prisma.user.findUnique({
+              where: { email },
+              select: { id: true },
+            });
+            if (user) userId = user.id;
+          }
+          if (userId) {
+            await prisma.billing.upsert({
+              where: { userId },
+              create: {
+                userId,
+                stripeCustomerId: customerId,
+                ...updateData,
+              },
+              update: updateData,
+            });
+          }
+        }
       }
     } else if (event.type === "customer.subscription.deleted") {
       const sub = event.data.object as Stripe.Subscription;

@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
       await tx.journal.deleteMany({ where: { authorId: userId } });
       await tx.userPrefferences.deleteMany({ where: { authorId: userId } });
       await tx.notification.deleteMany({ where: { authorId: userId } });
+      await tx.pushToken.deleteMany({ where: { userId } });
       await tx.mood.deleteMany({ where: { authorId: userId } });
       await tx.reminder.deleteMany({ where: { authorId: userId } });
       await tx.chatSession.deleteMany({ where: { userId } });
